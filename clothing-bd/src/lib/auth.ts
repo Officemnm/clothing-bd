@@ -8,6 +8,10 @@ export interface User {
   created_at: string;
   last_login: string;
   last_duration: string;
+  phone?: string;
+  photo?: string;
+  email?: string;
+  designation?: string;
 }
 
 export interface UsersDocument {
