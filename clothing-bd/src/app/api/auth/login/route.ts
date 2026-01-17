@@ -2,65 +2,72 @@ import { NextRequest, NextResponse } from 'next/server';
 import { validateUser, updateLastLogin } from '@/lib/auth';
 import { encrypt } from '@/lib/session';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { username, password } = body;
+
+    console.log('[Login API] Login attempt for:', username);
 
     if (!username || !password) {
       const res = NextResponse.json(
         { success: false, message: 'Username and password are required' },
         { status: 400 }
       );
-      res.headers.set('Cache-Control', 'no-store');
+      res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
       return res;
     }
 
     const user = await validateUser(username, password);
 
     if (!user) {
+      console.log('[Login API] Invalid credentials for:', username);
       const res = NextResponse.json(
         { success: false, message: 'Invalid credentials' },
         { status: 401 }
       );
-      res.headers.set('Cache-Control', 'no-store');
+      res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
       return res;
     }
 
+    console.log('[Login API] Credentials valid for:', username, 'role:', user.role);
+
     // Create session token directly and set in response cookie
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+    // Session expires in 24 hours
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
     const sessionToken = await encrypt({
       userId: username,
       username: username,
       role: user.role,
       permissions: user.permissions || [],
       expiresAt,
+      lastActivity: Date.now(), // Track last activity for inactivity timeout
     });
 
     await updateLastLogin(username);
+
+    console.log('[Login API] Session created for:', username);
 
     const res = NextResponse.json({
       success: true,
       message: 'Login successful',
       user: {
+        name: username,
         username,
         role: user.role,
         permissions: user.permissions,
       },
     });
     
-    // Set cookie directly on response - this is the key fix!
-    res.cookies.set({
-      name: 'session',
-      value: sessionToken,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      expires: expiresAt,
-      sameSite: 'lax',
-      path: '/',
-    });
+    // Set new session cookie - use Set-Cookie header directly for reliability
+    const cookieValue = `session=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Expires=${expiresAt.toUTCString()}${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`;
+    res.headers.set('Set-Cookie', cookieValue);
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     
-    res.headers.set('Cache-Control', 'no-store');
+    console.log('[Login API] Cookie set for:', username);
     return res;
   } catch (error) {
     console.error('Login error:', error);

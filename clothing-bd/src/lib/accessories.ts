@@ -9,6 +9,7 @@ export interface Challan {
   color: string;
   size: string;
   qty: number;
+  itemType?: 'Top' | 'Btm';
 }
 
 export interface AccessoryBooking {
@@ -136,6 +137,7 @@ export async function addChallan(
     color: challan.color,
     size: challan.size,
     qty: Number(challan.qty),
+    itemType: challan.itemType || 'Top',
   });
   
   await saveAccessoriesDb(dbAcc);
@@ -158,6 +160,7 @@ export async function updateChallan(
     color: challan.color,
     size: challan.size,
     qty: Number(challan.qty),
+    itemType: challan.itemType || 'Top',
   };
   
   await saveAccessoriesDb(dbAcc);
@@ -190,7 +193,8 @@ export async function deleteBooking(ref: string): Promise<boolean> {
 export async function updateAccessoriesStats(
   username: string,
   refNo: string,
-  actionType: string = 'Updated'
+  actionType: string = 'Updated',
+  status: 'success' | 'failed' = 'success'
 ): Promise<void> {
   const { db } = await connectToDatabase();
   
@@ -204,11 +208,13 @@ export async function updateAccessoriesStats(
     type: 'Accessories',
     action: actionType,
     iso_time: now.toISOString(),
+    status,
   };
   
-  // Get current stats
-  const stats = await db.collection('stats').findOne({ _id: 'stats_data' as unknown as import('mongodb').ObjectId });
-  const downloads = stats?.downloads || [];
+  // Get current stats - use dashboard_stats to match stats.ts
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const stats = await db.collection('stats').findOne({ _id: 'dashboard_stats' } as any);
+  const downloads = stats?.data?.downloads || [];
 
   // Add to beginning
   downloads.unshift(newRecord);
@@ -219,9 +225,10 @@ export async function updateAccessoriesStats(
   }
 
   // Save
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await db.collection('stats').updateOne(
-    { _id: 'stats_data' as unknown as import('mongodb').ObjectId },
-    { $set: { downloads } },
+    { _id: 'dashboard_stats' } as any,
+    { $set: { 'data.downloads': downloads } },
     { upsert: true }
   );
 }

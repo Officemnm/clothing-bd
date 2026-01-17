@@ -25,7 +25,7 @@ async function extractTextFromPDF(buffer: Buffer): Promise<string> {
 }
 
 // Update stats in MongoDB
-async function updatePOStats(username: string, fileCount: number, bookingRef: string) {
+async function updatePOStats(username: string, fileCount: number, bookingRef: string, status: 'success' | 'failed' = 'success') {
   try {
     const { getCollection, COLLECTIONS } = await import('@/lib/mongodb');
     const collection = await getCollection(COLLECTIONS.STATS);
@@ -39,11 +39,12 @@ async function updatePOStats(username: string, fileCount: number, bookingRef: st
       display_date: now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
       type: 'PO Sheet',
-      iso_time: now.toISOString()
+      iso_time: now.toISOString(),
+      status,
     };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const statsDoc = await collection.findOne({ _id: 'global_stats' } as any);
+    const statsDoc = await collection.findOne({ _id: 'dashboard_stats' } as any);
     const downloads = statsDoc?.data?.downloads || [];
     downloads.unshift(newRecord);
     
@@ -54,7 +55,7 @@ async function updatePOStats(username: string, fileCount: number, bookingRef: st
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await collection.updateOne(
-      { _id: 'global_stats' } as any,
+      { _id: 'dashboard_stats' } as any,
       { $set: { 'data.downloads': downloads } },
       { upsert: true }
     );
@@ -242,8 +243,8 @@ export async function POST(request: NextRequest) {
     // Process data into color-based tables
     const { tables, grandTotal } = processDataIntoTables(allData);
 
-    // Update stats
-    await updatePOStats(session.username, files.length, finalMetadata.booking);
+    // Update stats with success
+    await updatePOStats(session.username, files.length, finalMetadata.booking, 'success');
 
     return NextResponse.json({
       success: true,
@@ -257,6 +258,17 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('PO processing error:', error);
+    
+    // Log failed attempt
+    const session = await getSession();
+    if (session?.username) {
+      try {
+        await updatePOStats(session.username, 0, 'Unknown', 'failed');
+      } catch (e) {
+        console.error('Failed to log failed PO stats:', e);
+      }
+    }
+    
     return NextResponse.json(
       { success: false, message: 'Failed to process files' },
       { status: 500 }

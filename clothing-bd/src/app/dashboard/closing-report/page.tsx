@@ -1,6 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  ChartBarIcon,
+  MagnifyingGlassIcon,
+  ExclamationCircleIcon,
+} from '@heroicons/react/24/outline';
 
 interface SizeData {
   size: string;
@@ -43,6 +50,7 @@ export default function ClosingReportPage() {
   const [refNo, setRefNo] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,9 +72,8 @@ export default function ClosingReportPage() {
       const data: ReportData = await response.json();
 
       if (data.success) {
-        // Store data in sessionStorage and open preview in new tab
         sessionStorage.setItem('closingReportData', JSON.stringify(data));
-        window.open('/closing-preview', '_blank');
+        router.push('/closing-preview');
       } else {
         setError('Failed to fetch data. Please check the booking number.');
       }
@@ -78,281 +85,157 @@ export default function ClosingReportPage() {
   };
 
   return (
-    <>
-      {/* Full Page Blur Overlay with Loading Animation */}
-      {isLoading && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 9999,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: 'rgba(255, 255, 255, 0.85)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '24px',
-            boxShadow: '0 25px 80px rgba(0, 0, 0, 0.15)',
-            padding: '48px 64px',
-            textAlign: 'center',
-            maxWidth: '420px',
-          }}>
-            {/* Animated Spinner */}
-            <div style={{
-              width: '100px',
-              height: '100px',
-              margin: '0 auto 28px',
-              position: 'relative',
-            }}>
-              <div style={{
-                position: 'absolute',
-                inset: 0,
-                border: '5px solid #f3f4f6',
-                borderRadius: '50%',
-              }} />
-              <div style={{
-                position: 'absolute',
-                inset: 0,
-                border: '5px solid transparent',
-                borderTopColor: '#f97316',
-                borderRadius: '50%',
-                animation: 'spin 1s linear infinite',
-              }} />
-              <div style={{
-                position: 'absolute',
-                inset: '12px',
-                border: '5px solid transparent',
-                borderTopColor: '#fb923c',
-                borderRadius: '50%',
-                animation: 'spin 0.8s linear infinite reverse',
-              }} />
-              <div style={{
-                position: 'absolute',
-                inset: '24px',
-                border: '5px solid transparent',
-                borderTopColor: '#fdba74',
-                borderRadius: '50%',
-                animation: 'spin 0.6s linear infinite',
-              }} />
-              {/* Center Icon */}
-              <div style={{
-                position: 'absolute',
-                inset: '36px',
-                backgroundColor: '#fff7ed',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2">
-                  <path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-            </div>
-
-            <h3 style={{
-              fontSize: '22px',
-              fontWeight: '700',
-              color: '#1a1a2e',
-              marginBottom: '10px',
-            }}>
-              Connecting to ERP System
-            </h3>
-            <p style={{
-              fontSize: '15px',
-              color: '#6b7280',
-              marginBottom: '20px',
-            }}>
-              Fetching closing report data for <strong style={{ color: '#f97316' }}>{refNo}</strong>
-            </p>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-            }}>
-              <div style={{ width: '8px', height: '8px', backgroundColor: '#f97316', borderRadius: '50%', animation: 'pulse 1.5s ease-in-out infinite' }} />
-              <div style={{ width: '8px', height: '8px', backgroundColor: '#fb923c', borderRadius: '50%', animation: 'pulse 1.5s ease-in-out 0.2s infinite' }} />
-              <div style={{ width: '8px', height: '8px', backgroundColor: '#fdba74', borderRadius: '50%', animation: 'pulse 1.5s ease-in-out 0.4s infinite' }} />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Main Content */}
-      <div style={{ maxWidth: '700px', margin: '0 auto', padding: '20px' }}>
-        {/* Header */}
-        <div style={{ marginBottom: '32px' }}>
-          <h1 style={{ fontSize: '28px', fontWeight: '700', color: '#1a1a2e', marginBottom: '8px' }}>
-            Closing Report
-          </h1>
-          <p style={{ fontSize: '15px', color: '#6b7280' }}>
-            Generate production closing reports from ERP system
-          </p>
-        </div>
-
-        {/* Form Card */}
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '20px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-          padding: '40px',
-        }}>
-          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <div style={{
-              width: '72px',
-              height: '72px',
-              background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
-              borderRadius: '18px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '16px',
-              boxShadow: '0 10px 30px rgba(249, 115, 22, 0.3)',
-            }}>
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                <path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#1a1a2e', marginBottom: '8px' }}>
-              Generate New Report
-            </h2>
-            <p style={{ fontSize: '14px', color: '#6b7280' }}>
-              Enter the booking number to fetch closing data
-            </p>
-          </div>
-
-          {error && (
-            <div style={{
-              backgroundColor: '#fef2f2',
-              border: '1px solid #fecaca',
-              borderRadius: '12px',
-              padding: '14px 16px',
-              marginBottom: '24px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-            }}>
-              <div style={{
-                width: '32px',
-                height: '32px',
-                backgroundColor: '#fee2e2',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2">
-                  <path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <p style={{ color: '#dc2626', fontSize: '14px', fontWeight: '500', margin: 0 }}>{error}</p>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit}>
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{
-                display: 'block',
-                fontSize: '13px',
-                fontWeight: '600',
-                color: '#374151',
-                marginBottom: '10px',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-              }}>
-                Booking Number (IR/IB)
-              </label>
-              <input
-                type="text"
-                value={refNo}
-                onChange={(e) => setRefNo(e.target.value.toUpperCase())}
-                placeholder="e.g. IB-12345 or IR-67890"
-                required
-                disabled={isLoading}
-                style={{
-                  width: '100%',
-                  padding: '16px 20px',
-                  fontSize: '18px',
-                  fontWeight: '600',
-                  border: '2px solid #e5e7eb',
-                  borderRadius: '14px',
-                  backgroundColor: isLoading ? '#f3f4f6' : '#f9fafb',
-                  color: '#1f2937',
-                  textTransform: 'uppercase',
-                  letterSpacing: '1px',
-                  boxSizing: 'border-box',
-                }}
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              style={{
-                width: '100%',
-                padding: '16px 24px',
-                fontSize: '16px',
-                fontWeight: '600',
-                color: 'white',
-                background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
-                border: 'none',
-                borderRadius: '14px',
-                cursor: isLoading ? 'not-allowed' : 'pointer',
-                opacity: isLoading ? 0.7 : 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '10px',
-                boxShadow: '0 10px 30px rgba(249, 115, 22, 0.3)',
-              }}
+    <div className="max-w-2xl mx-auto">
+      {/* Loading Overlay */}
+      <AnimatePresence>
+        {isLoading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="flex flex-col items-center gap-6"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              <span>Generate Report</span>
-            </button>
-          </form>
-        </div>
+              {/* Modern Spinner */}
+              <div className="relative w-12 h-12">
+                <motion.div
+                  className="absolute inset-0 rounded-full border-[3px] border-slate-200"
+                />
+                <motion.div
+                  className="absolute inset-0 rounded-full border-[3px] border-transparent border-t-teal-500"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                />
+                <motion.div
+                  className="absolute inset-1 rounded-full border-[3px] border-transparent border-b-teal-300"
+                  animate={{ rotate: -360 }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+                />
+              </div>
+              <p className="text-sm font-medium text-slate-500">Generating Report...</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-        {/* Info Card */}
-        <div style={{
-          marginTop: '24px',
-          backgroundColor: '#fff7ed',
-          border: '1px solid #fed7aa',
-          borderRadius: '16px',
-          padding: '20px 24px',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ea580c" strokeWidth="2" style={{ flexShrink: 0, marginTop: '2px' }}>
-              <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <div>
-              <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#c2410c', marginBottom: '4px' }}>
-                How it works
-              </h4>
-              <p style={{ fontSize: '13px', color: '#9a3412', margin: 0, lineHeight: '1.6' }}>
-                Enter your IR or IB booking number. The system will connect to ERP, fetch the closing data, 
-                and open a preview page in a new tab with options to print or download as Excel.
-              </p>
-            </div>
+      {/* Page Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-8"
+      >
+        <div className="flex items-center gap-4 mb-3">
+          <motion.div 
+            whileHover={{ scale: 1.05, rotate: 5 }}
+            className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-200"
+          >
+            <ChartBarIcon className="w-6 h-6 text-white" />
+          </motion.div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800">Closing Report</h1>
+            <p className="text-sm text-slate-500">Generate production closing report from ERP</p>
           </div>
         </div>
-      </div>
+      </motion.div>
 
-      <style jsx>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-        @keyframes pulse {
-          0%, 100% { opacity: 0.4; transform: scale(0.8); }
-          50% { opacity: 1; transform: scale(1.2); }
-        }
-      `}</style>
-    </>
+      {/* Main Form Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="bg-white rounded-xl border border-slate-200 shadow-sm"
+      >
+        <div className="p-6 border-b border-slate-100">
+          <h2 className="text-lg font-semibold text-slate-800">Search Booking</h2>
+          <p className="text-sm text-slate-500 mt-1">Enter your booking reference number to generate the report</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6">
+          {/* Input Field */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Booking Number <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={refNo}
+              onChange={(e) => { setRefNo(e.target.value.toUpperCase()); setError(''); }}
+              placeholder="Enter booking number (e.g., BD-24-0001)"
+              className="w-full h-12 px-4 text-base bg-white border-2 border-slate-200 rounded-lg focus:outline-none focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 transition-all placeholder:text-slate-400"
+            />
+          </div>
+
+          {/* Error Message */}
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3"
+              >
+                <ExclamationCircleIcon className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-red-800">{error}</p>
+                  <p className="text-xs text-red-600 mt-0.5">Please verify the booking number and try again</p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Submit Button */}
+          <motion.button
+            type="submit"
+            disabled={isLoading || !refNo.trim()}
+            whileHover={!isLoading && refNo.trim() ? { scale: 1.01 } : {}}
+            whileTap={!isLoading && refNo.trim() ? { scale: 0.99 } : {}}
+            className={`w-full h-12 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all ${
+              isLoading || !refNo.trim()
+                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                : 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:shadow-lg hover:shadow-emerald-200'
+            }`}
+          >
+            <ChartBarIcon className="w-5 h-5" />
+            Generate Report
+          </motion.button>
+        </form>
+      </motion.div>
+
+      {/* Info Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="mt-6 bg-gradient-to-br from-slate-50 to-white rounded-xl border border-slate-200 p-6"
+      >
+        <h3 className="text-sm font-semibold text-slate-700 mb-4">How it works</h3>
+        <div className="space-y-3">
+          {[
+            { step: 1, text: 'Enter your booking reference number' },
+            { step: 2, text: 'System fetches data from ERP' },
+            { step: 3, text: 'Report generates with size breakdown' },
+            { step: 4, text: 'View, print or export the report' },
+          ].map((item) => (
+            <motion.div 
+              key={item.step} 
+              className="flex items-center gap-3"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 + item.step * 0.1 }}
+            >
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-teal-500 to-emerald-600 text-white flex items-center justify-center text-xs font-bold shadow-sm">
+                {item.step}
+              </div>
+              <span className="text-sm text-slate-600">{item.text}</span>
+            </motion.div>
+          ))}
+        </div>
+      </motion.div>
+    </div>
   );
 }

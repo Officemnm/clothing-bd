@@ -1,17 +1,32 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getDashboardStats } from '@/lib/stats';
-import { getSession } from '@/lib/session';
+import { decrypt } from '@/lib/session';
 
-export async function GET() {
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+export async function GET(request: NextRequest) {
   try {
-    const session = await getSession();
+    // Read cookie directly from request
+    const sessionCookie = request.cookies.get('session')?.value;
     
-    if (!session) {
+    if (!sessionCookie) {
       const res = NextResponse.json(
         { success: false, message: 'Unauthorized' },
         { status: 401 }
       );
-      res.headers.set('Cache-Control', 'no-store');
+      res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+      return res;
+    }
+
+    const session = await decrypt(sessionCookie);
+    
+    if (!session) {
+      const res = NextResponse.json(
+        { success: false, message: 'Invalid session' },
+        { status: 401 }
+      );
+      res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
       return res;
     }
 
@@ -21,7 +36,8 @@ export async function GET() {
       success: true,
       data: stats,
     });
-    res.headers.set('Cache-Control', 'no-store');
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.headers.set('Pragma', 'no-cache');
     return res;
   } catch (error) {
     console.error('Stats error:', error);

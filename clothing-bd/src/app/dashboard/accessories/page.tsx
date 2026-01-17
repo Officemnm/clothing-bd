@@ -2,6 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  CubeIcon,
+  MagnifyingGlassIcon,
+  InboxIcon,
+  ArrowRightIcon,
+} from '@heroicons/react/24/outline';
 
 interface BookingSummary {
   ref: string;
@@ -75,334 +82,225 @@ export default function AccessoriesPage() {
   );
 
   return (
-    <>
-      {/* Full Page Loading Overlay */}
-      {isLoading && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 9999,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          backdropFilter: 'blur(8px)',
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '20px',
-            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.15)',
-            padding: '40px 56px',
-            textAlign: 'center',
-          }}>
-            <div style={{
-              width: '80px',
-              height: '80px',
-              margin: '0 auto 20px',
-              position: 'relative',
-            }}>
-              <div style={{
-                position: 'absolute',
-                inset: 0,
-                border: '4px solid #f3f4f6',
-                borderRadius: '50%',
-              }} />
-              <div style={{
-                position: 'absolute',
-                inset: 0,
-                border: '4px solid transparent',
-                borderTopColor: '#8b5cf6',
-                borderRadius: '50%',
-                animation: 'spin 1s linear infinite',
-              }} />
-            </div>
-            <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#1a1a2e', marginBottom: '6px' }}>
-              Loading Booking
-            </h3>
-            <p style={{ fontSize: '14px', color: '#6b7280' }}>
-              Fetching data for <strong style={{ color: '#8b5cf6' }}>{refNo}</strong>
-            </p>
+    <div className="max-w-5xl mx-auto">
+      {/* Loading Overlay */}
+      <AnimatePresence>
+        {isLoading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="flex flex-col items-center gap-5"
+            >
+              <div className="flex items-center gap-1.5">
+                {[0, 1, 2, 3].map((i) => (
+                  <motion.div
+                    key={i}
+                    className="w-3 h-3 rounded-full bg-amber-500"
+                    animate={{ y: [0, -12, 0], opacity: [0.4, 1, 0.4] }}
+                    transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.1, ease: 'easeInOut' }}
+                  />
+                ))}
+              </div>
+              <p className="text-sm font-medium text-slate-500">Loading Accessories...</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Page Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-8"
+      >
+        <div className="flex items-center gap-4 mb-3">
+          <motion.div 
+            whileHover={{ scale: 1.05, rotate: 5 }}
+            className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-200"
+          >
+            <CubeIcon className="w-6 h-6 text-white" />
+          </motion.div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800">Accessories</h1>
+            <p className="text-sm text-slate-500">Track challan and accessories data by booking reference</p>
           </div>
         </div>
-      )}
+      </motion.div>
 
-      <div style={{ animation: 'fadeIn 0.4s ease' }}>
-        {/* Header */}
-        <div style={{ marginBottom: '28px' }}>
-          <h1 style={{ fontSize: '26px', fontWeight: '700', color: '#1a1a2e', marginBottom: '6px' }}>
-            Accessories Challan
-          </h1>
-          <p style={{ fontSize: '14px', color: '#6b7280' }}>
-            Manage challan entries and tracking for accessories
-          </p>
+      {/* Search Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="bg-white rounded-xl border border-slate-200 shadow-sm mb-6"
+      >
+        <div className="p-6 border-b border-slate-100">
+          <h2 className="text-lg font-semibold text-slate-800">Quick Search</h2>
+          <p className="text-sm text-slate-500 mt-1">Enter booking reference to view accessories details</p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '400px 1fr', gap: '24px' }}>
-          {/* Search Card */}
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '20px',
-            border: '1px solid #f0f0f0',
-            padding: '32px',
-            height: 'fit-content',
-          }}>
-            <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-              <div style={{
-                width: '64px',
-                height: '64px',
-                background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-                borderRadius: '16px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: '14px',
-                boxShadow: '0 8px 24px rgba(139, 92, 246, 0.3)',
-              }}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                  <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-              </div>
-              <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#1a1a2e', marginBottom: '4px' }}>
-                Search Booking
-              </h2>
-              <p style={{ fontSize: '13px', color: '#9ca3af' }}>
-                Enter reference to manage challans
-              </p>
+        <form onSubmit={handleSubmit} className="p-6">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1 relative">
+              <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <input
+                type="text"
+                value={refNo}
+                onChange={(e) => { setRefNo(e.target.value.toUpperCase()); setError(''); }}
+                placeholder="Enter booking number (e.g., BD-24-0001)"
+                className="w-full h-12 pl-12 pr-4 text-base bg-white border-2 border-slate-200 rounded-xl focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 transition-all placeholder:text-slate-400"
+              />
             </div>
+            <motion.button
+              type="submit"
+              disabled={isLoading || !refNo.trim()}
+              whileHover={!isLoading && refNo.trim() ? { scale: 1.02 } : {}}
+              whileTap={!isLoading && refNo.trim() ? { scale: 0.98 } : {}}
+              className={`h-12 px-8 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all ${
+                isLoading || !refNo.trim()
+                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:shadow-lg hover:shadow-amber-200'
+              }`}
+            >
+              <MagnifyingGlassIcon className="w-5 h-5" />
+              Search
+            </motion.button>
+          </div>
 
+          {/* Error Message */}
+          <AnimatePresence>
             {error && (
-              <div style={{
-                backgroundColor: '#fef2f2',
-                border: '1px solid #fecaca',
-                borderRadius: '12px',
-                padding: '12px 14px',
-                marginBottom: '20px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-              }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2">
-                  <path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <p style={{ color: '#dc2626', fontSize: '13px', fontWeight: '500', margin: 0 }}>{error}</p>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit}>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  color: '#374151',
-                  marginBottom: '8px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                }}>
-                  Booking Reference (IR/IB)
-                </label>
-                <input
-                  type="text"
-                  value={refNo}
-                  onChange={(e) => setRefNo(e.target.value.toUpperCase())}
-                  placeholder="e.g. IB-12345"
-                  required
-                  disabled={isLoading}
-                  style={{
-                    width: '100%',
-                    padding: '14px 16px',
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    border: '2px solid #e5e7eb',
-                    borderRadius: '12px',
-                    backgroundColor: '#f9fafb',
-                    color: '#1f2937',
-                    textTransform: 'uppercase',
-                    letterSpacing: '1px',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                style={{
-                  width: '100%',
-                  padding: '14px 20px',
-                  fontSize: '15px',
-                  fontWeight: '600',
-                  color: 'white',
-                  background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-                  border: 'none',
-                  borderRadius: '12px',
-                  cursor: isLoading ? 'not-allowed' : 'pointer',
-                  opacity: isLoading ? 0.7 : 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  boxShadow: '0 8px 24px rgba(139, 92, 246, 0.3)',
-                }}
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3"
               >
-                <span>Proceed</span>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                <svg className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-              </button>
-            </form>
+                <span className="text-sm font-medium text-red-800">{error}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </form>
+      </motion.div>
+
+      {/* Recent Bookings */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"
+      >
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-800">Recent Bookings</h3>
+            <p className="text-sm text-slate-500 mt-0.5">{bookings.length} bookings available</p>
           </div>
-
-          {/* Bookings List */}
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '20px',
-            border: '1px solid #f0f0f0',
-            overflow: 'hidden',
-          }}>
-            <div style={{
-              padding: '20px 24px',
-              borderBottom: '1px solid #f0f0f0',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}>
-              <div>
-                <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1a1a2e', margin: 0 }}>
-                  Saved Bookings
-                </h3>
-                <p style={{ fontSize: '12px', color: '#9ca3af', margin: '2px 0 0 0' }}>
-                  {bookings.length} total bookings
-                </p>
-              </div>
-              <div style={{ position: 'relative' }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }}>
-                  <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <input
-                  type="text"
-                  placeholder="Filter bookings..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{
-                    paddingLeft: '38px',
-                    paddingRight: '14px',
-                    paddingTop: '10px',
-                    paddingBottom: '10px',
-                    fontSize: '13px',
-                    backgroundColor: '#f8f9fa',
-                    border: '1px solid #e8e8e8',
-                    borderRadius: '10px',
-                    outline: 'none',
-                    width: '200px',
-                  }}
-                />
-              </div>
-            </div>
-
-            <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
-              {isLoadingList ? (
-                <div style={{ padding: '60px', textAlign: 'center' }}>
-                  <div style={{
-                    width: '40px',
-                    height: '40px',
-                    border: '3px solid #e5e7eb',
-                    borderTopColor: '#8b5cf6',
-                    borderRadius: '50%',
-                    animation: 'spin 0.8s linear infinite',
-                    margin: '0 auto',
-                  }} />
-                </div>
-              ) : filteredBookings.length === 0 ? (
-                <div style={{ padding: '60px', textAlign: 'center' }}>
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#e5e7eb" strokeWidth="1.5" style={{ margin: '0 auto 12px' }}>
-                    <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                  </svg>
-                  <p style={{ color: '#9ca3af', fontSize: '14px', margin: 0 }}>
-                    {searchQuery ? 'No matching bookings' : 'No bookings saved yet'}
-                  </p>
-                </div>
-              ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-                  <thead>
-                    <tr style={{ backgroundColor: '#fafafa' }}>
-                      <th style={{ textAlign: 'left', padding: '12px 20px', fontSize: '11px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Reference</th>
-                      <th style={{ textAlign: 'left', padding: '12px 20px', fontSize: '11px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Buyer</th>
-                      <th style={{ textAlign: 'left', padding: '12px 20px', fontSize: '11px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Style</th>
-                      <th style={{ textAlign: 'center', padding: '12px 20px', fontSize: '11px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Challans</th>
-                      <th style={{ textAlign: 'center', padding: '12px 20px', fontSize: '11px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Total Qty</th>
-                      <th style={{ textAlign: 'center', padding: '12px 20px', fontSize: '11px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredBookings.map((booking) => (
-                      <tr 
-                        key={booking.ref}
-                        style={{ borderBottom: '1px solid #f5f5f5', cursor: 'pointer' }}
-                        onClick={() => router.push(`/dashboard/accessories/${booking.ref}`)}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#faf5ff'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                      >
-                        <td style={{ padding: '14px 20px' }}>
-                          <span style={{ fontWeight: '700', color: '#8b5cf6' }}>{booking.ref}</span>
-                        </td>
-                        <td style={{ padding: '14px 20px', fontWeight: '500', color: '#1f2937' }}>{booking.buyer}</td>
-                        <td style={{ padding: '14px 20px', color: '#6b7280' }}>{booking.style}</td>
-                        <td style={{ padding: '14px 20px', textAlign: 'center' }}>
-                          <span style={{
-                            display: 'inline-block',
-                            padding: '4px 12px',
-                            backgroundColor: booking.challanCount > 0 ? '#f0fdf4' : '#f5f5f5',
-                            color: booking.challanCount > 0 ? '#166534' : '#6b7280',
-                            borderRadius: '20px',
-                            fontSize: '13px',
-                            fontWeight: '600',
-                          }}>
-                            {booking.challanCount}
-                          </span>
-                        </td>
-                        <td style={{ padding: '14px 20px', textAlign: 'center', fontWeight: '600', color: '#1f2937' }}>
-                          {booking.totalQty.toLocaleString()}
-                        </td>
-                        <td style={{ padding: '14px 20px', textAlign: 'center' }}>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              router.push(`/dashboard/accessories/${booking.ref}`);
-                            }}
-                            style={{
-                              padding: '6px 14px',
-                              fontSize: '12px',
-                              fontWeight: '600',
-                              color: '#8b5cf6',
-                              backgroundColor: '#faf5ff',
-                              border: '1px solid #e9d5ff',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            Open
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Filter bookings..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/10 transition-all"
+            />
           </div>
         </div>
-      </div>
 
-      <style jsx>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
-    </>
+        {isLoadingList ? (
+          <div className="py-12 text-center">
+            <div className="flex items-center justify-center gap-1.5 mb-4">
+              {[0, 1, 2, 3].map((i) => (
+                <motion.div
+                  key={i}
+                  className="w-2.5 h-2.5 rounded-full bg-amber-500"
+                  animate={{ y: [0, -10, 0], opacity: [0.4, 1, 0.4] }}
+                  transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.1, ease: 'easeInOut' }}
+                />
+              ))}
+            </div>
+            <p className="text-sm text-slate-500">Loading bookings...</p>
+          </div>
+        ) : filteredBookings.length === 0 ? (
+          <div className="p-12 text-center">
+            <div className="w-14 h-14 mx-auto mb-4 rounded-lg bg-slate-100 flex items-center justify-center">
+              <svg className="w-7 h-7 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+              </svg>
+            </div>
+            <p className="text-slate-600 font-medium">No bookings found</p>
+            <p className="text-sm text-slate-400 mt-1">Use the search above to find a booking</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-slate-50">
+                  <th className="text-left text-xs font-semibold text-slate-500 uppercase py-3 px-6">Reference</th>
+                  <th className="text-left text-xs font-semibold text-slate-500 uppercase py-3 px-6">Buyer</th>
+                  <th className="text-left text-xs font-semibold text-slate-500 uppercase py-3 px-6">Style</th>
+                  <th className="text-left text-xs font-semibold text-slate-500 uppercase py-3 px-6">Challans</th>
+                  <th className="text-left text-xs font-semibold text-slate-500 uppercase py-3 px-6">Total Qty</th>
+                  <th className="text-left text-xs font-semibold text-slate-500 uppercase py-3 px-6">Last Updated</th>
+                  <th className="text-right text-xs font-semibold text-slate-500 uppercase py-3 px-6">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredBookings.map((booking, index) => (
+                  <motion.tr
+                    key={booking.ref}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: index * 0.02 }}
+                    className="hover:bg-slate-50 transition-colors"
+                  >
+                    <td className="py-4 px-6">
+                      <span className="font-semibold text-slate-800">{booking.ref}</span>
+                    </td>
+                    <td className="py-4 px-6">
+                      <span className="text-sm text-slate-600">{booking.buyer}</span>
+                    </td>
+                    <td className="py-4 px-6">
+                      <span className="text-sm text-slate-600">{booking.style}</span>
+                    </td>
+                    <td className="py-4 px-6">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium bg-amber-100 text-amber-700">
+                        {booking.challanCount} challans
+                      </span>
+                    </td>
+                    <td className="py-4 px-6">
+                      <span className="text-sm font-semibold text-slate-800">{booking.totalQty.toLocaleString()}</span>
+                    </td>
+                    <td className="py-4 px-6">
+                      <span className="text-sm text-slate-500">{booking.lastUpdated}</span>
+                    </td>
+                    <td className="py-4 px-6 text-right">
+                      <button
+                        onClick={() => router.push(`/dashboard/accessories/${booking.ref}`)}
+                        className="px-4 py-2 text-sm font-medium text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors"
+                      >
+                        View Details
+                      </button>
+                    </td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </motion.div>
+    </div>
   );
 }

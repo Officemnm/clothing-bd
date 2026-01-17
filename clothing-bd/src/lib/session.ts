@@ -11,7 +11,12 @@ export interface SessionPayload {
   role: string;
   permissions: string[];
   expiresAt: Date;
+  lastActivity: number; // Unix timestamp for last activity
 }
+
+// Constants for session management
+export const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+export const INACTIVITY_TIMEOUT = 10 * 60 * 1000; // 10 minutes
 
 export async function encrypt(payload: SessionPayload): Promise<string> {
   return await new SignJWT({ ...payload })
@@ -37,13 +42,14 @@ export async function createSession(user: {
   role: string;
   permissions: string[];
 }): Promise<string> {
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const expiresAt = new Date(Date.now() + SESSION_DURATION);
   const session = await encrypt({
     userId: user.username,
     username: user.username,
     role: user.role,
     permissions: user.permissions,
     expiresAt,
+    lastActivity: Date.now(),
   });
 
   const cookieStore = await cookies();
@@ -78,6 +84,44 @@ export async function deleteSession(): Promise<void> {
   });
 }
 
+// Check if session has been inactive for too long
+export function isSessionInactive(session: SessionPayload): boolean {
+  const now = Date.now();
+  const lastActivity = session.lastActivity || 0;
+  return (now - lastActivity) > INACTIVITY_TIMEOUT;
+}
+
+// Update session with new activity timestamp
+export async function updateSessionActivity(request: NextRequest): Promise<NextResponse | null> {
+  const session = request.cookies.get('session')?.value;
+  if (!session) return null;
+
+  const parsed = await decrypt(session);
+  if (!parsed) return null;
+
+  // Check for inactivity - if inactive for more than 10 minutes, return null to trigger logout
+  if (isSessionInactive(parsed)) {
+    return null;
+  }
+
+  // Update lastActivity timestamp
+  parsed.lastActivity = Date.now();
+  
+  // Keep original expiry (24 hours from login) - don't extend on activity
+  const response = NextResponse.next();
+  response.cookies.set({
+    name: 'session',
+    value: await encrypt(parsed),
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    expires: new Date(parsed.expiresAt),
+    sameSite: 'lax',
+    path: '/',
+  });
+
+  return response;
+}
+
 export async function updateSession(request: NextRequest): Promise<NextResponse | null> {
   const session = request.cookies.get('session')?.value;
   if (!session) return null;
@@ -85,14 +129,20 @@ export async function updateSession(request: NextRequest): Promise<NextResponse 
   const parsed = await decrypt(session);
   if (!parsed) return null;
 
-  parsed.expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+  // Check for inactivity
+  if (isSessionInactive(parsed)) {
+    return null;
+  }
+
+  // Update lastActivity but keep original 24-hour expiry
+  parsed.lastActivity = Date.now();
   const response = NextResponse.next();
   response.cookies.set({
     name: 'session',
     value: await encrypt(parsed),
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    expires: parsed.expiresAt,
+    expires: new Date(parsed.expiresAt),
     sameSite: 'lax',
     path: '/',
   });

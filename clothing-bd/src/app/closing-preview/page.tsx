@@ -1,6 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { toPng } from 'html-to-image';
+import { jsPDF } from 'jspdf';
 
 interface SizeData {
   size: string;
@@ -41,331 +45,353 @@ interface ReportData {
 export default function ClosingPreviewPage() {
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [currentDate, setCurrentDate] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [isPdfGenerating, setIsPdfGenerating] = useState(false);
+  const reportRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const stored = sessionStorage.getItem('closingReportData');
     if (stored) {
       setReportData(JSON.parse(stored));
     }
-    setCurrentDate(new Date().toLocaleDateString('en-GB'));
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    setCurrentDate(`${day}-${month}-${year}`);
+    setIsLoading(false);
   }, []);
 
-  const handlePrint = () => {
-    window.print();
-  };
-
+  const handlePrint = () => window.print();
   const handleDownloadExcel = () => {
-    if (reportData) {
-      window.location.href = `/api/closing/excel?ref=${reportData.refNo}`;
+    if (reportData) window.location.href = `/api/closing/excel?ref=${reportData.refNo}`;
+  };
+  const handleBack = () => router.back();
+
+  const handleScreenshot = async () => {
+    if (!reportRef.current || !reportData) return;
+    
+    setIsCapturing(true);
+    
+    try {
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      const dataUrl = await toPng(reportRef.current, {
+        pixelRatio: 6,
+        backgroundColor: '#ffffff',
+        cacheBust: true,
+      });
+      
+      // Download the image
+      const link = document.createElement('a');
+      link.download = `Closing-Report-${reportData.refNo}-${currentDate}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (error) {
+      console.error('Screenshot failed:', error);
+    } finally {
+      setIsCapturing(false);
     }
   };
 
-  const handleBack = () => {
-    window.close();
+  const handleDownloadPdf = async () => {
+    if (!reportRef.current || !reportData) return;
+    
+    setIsPdfGenerating(true);
+    
+    try {
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      const element = reportRef.current;
+      const rect = element.getBoundingClientRect();
+      
+      const dataUrl = await toPng(element, {
+        pixelRatio: 4,
+        backgroundColor: '#ffffff',
+        cacheBust: true,
+      });
+      
+      // A4 size in mm: 210 x 297
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+      
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const margin = 5;
+      const contentWidth = pageWidth - (margin * 2);
+      
+      // Calculate height maintaining aspect ratio
+      const imgRatio = rect.height / rect.width;
+      const contentHeight = contentWidth * imgRatio;
+      
+      // If content is taller than page, scale to fit
+      let finalWidth = contentWidth;
+      let finalHeight = contentHeight;
+      
+      if (contentHeight > pageHeight - (margin * 2)) {
+        finalHeight = pageHeight - (margin * 2);
+        finalWidth = finalHeight / imgRatio;
+      }
+      
+      // Center horizontally
+      const xOffset = (pageWidth - finalWidth) / 2;
+      
+      pdf.addImage(dataUrl, 'PNG', xOffset, margin, finalWidth, finalHeight);
+      pdf.save(`Closing-Report-${reportData.refNo}-${currentDate}.pdf`);
+    } catch (error) {
+      console.error('PDF generation failed:', error);
+    } finally {
+      setIsPdfGenerating(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white/80 backdrop-blur-sm">
+        <div className="relative w-12 h-12">
+          <motion.div className="absolute inset-0 rounded-full border-[3px] border-slate-200" />
+          <motion.div
+            className="absolute inset-0 rounded-full border-[3px] border-transparent border-t-teal-500"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+          />
+          <motion.div
+            className="absolute inset-1 rounded-full border-[3px] border-transparent border-b-teal-300"
+            animate={{ rotate: -360 }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+          />
+        </div>
+      </div>
+    );
+  }
 
   if (!reportData) {
     return (
-      <html>
-        <body style={{ margin: 0, padding: 0 }}>
-          <div style={{
-            minHeight: '100vh',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: '#fff',
-            fontFamily: 'Arial, sans-serif',
-          }}>
-            <div style={{ textAlign: 'center' }}>
-              <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#000', marginBottom: '12px' }}>
-                No Report Data
-              </h2>
-              <p style={{ color: '#000', marginBottom: '24px' }}>Please generate a report first.</p>
-              <button
-                onClick={() => window.close()}
-                style={{
-                  padding: '10px 28px',
-                  fontSize: '14px',
-                  fontWeight: '700',
-                  color: 'white',
-                  backgroundColor: '#000',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                }}
-              >
-                Close Window
-              </button>
-            </div>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="min-h-screen flex items-center justify-center bg-white font-sans"
+      >
+        <div className="text-center p-10">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-200 flex items-center justify-center">
+            <svg className="w-8 h-8 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
           </div>
-        </body>
-      </html>
+          <h2 className="text-lg font-semibold text-black mb-2">No Report Data</h2>
+          <p className="text-gray-600 mb-5 text-sm">Please generate a report first.</p>
+          <button
+            onClick={() => router.push('/dashboard/closing-report')}
+            className="px-6 py-2 text-sm font-medium text-white bg-gray-800 rounded hover:bg-gray-700"
+          >
+            Go to Closing Report
+          </button>
+        </div>
+      </motion.div>
     );
   }
 
   return (
-    <html>
-      <head>
-        <title>Closing Report - {reportData.refNo}</title>
-        <style>{`
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { 
-            font-family: Arial, Helvetica, sans-serif;
-            background: #fff;
-            color: #000;
-            -webkit-font-smoothing: antialiased;
-            text-rendering: geometricPrecision;
-          }
-          table { font-family: Arial, sans-serif; border-collapse: collapse; }
-          @media print {
-            @page { margin: 5mm; size: both; }
-            body { background: white !important; }
-            .no-print { display: none !important; }
-            .print-container { box-shadow: none !important; }
-          }
-        `}</style>
-      </head>
-      <body>
-        <div style={{ minHeight: '100vh', padding: '12px' }}>
-          {/* Action Bar */}
-          <div className="no-print" style={{
-            maxWidth: '1600px',
-            margin: '0 auto 12px',
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: '8px',
-            padding: '10px 16px',
-            backgroundColor: '#f5f5f5',
-            border: '1px solid #ddd',
-          }}>
-            <button
-              onClick={handleBack}
-              style={{
-                padding: '8px 20px',
-                fontSize: '13px',
-                fontWeight: '700',
-                color: '#000',
-                backgroundColor: '#fff',
-                border: '1px solid #000',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M19 12H5M12 19l-7-7 7-7" />
+    <>
+      <style>{`
+        @media print {
+          @page { margin: 4mm; }
+          .no-print { display: none !important; }
+        }
+      `}</style>
+      
+      <div className="min-h-screen bg-gray-50 p-2 font-sans">
+        {/* Action Bar - Professional Style */}
+        <div className="no-print max-w-6xl mx-auto mb-3 flex justify-end gap-3 p-3 bg-white rounded-xl shadow-md border border-gray-100">
+          <button onClick={handleBack} className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-gradient-to-b from-gray-50 to-gray-100 border border-gray-300 rounded-lg flex items-center gap-2 hover:from-gray-100 hover:to-gray-200 hover:shadow-sm transition-all duration-200">
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+            Back
+          </button>
+          <button 
+            onClick={handleScreenshot} 
+            disabled={isCapturing}
+            title="Screenshot"
+            className="p-2.5 text-white bg-gradient-to-b from-cyan-500 to-cyan-700 rounded-lg hover:from-cyan-600 hover:to-cyan-800 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isCapturing ? (
+              <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+                <path d="M12 2a10 10 0 0 1 10 10" />
               </svg>
-              Back
-            </button>
-            <button
-              onClick={handlePrint}
-              style={{
-                padding: '8px 20px',
-                fontSize: '13px',
-                fontWeight: '700',
-                color: '#fff',
-                backgroundColor: '#000',
-                border: 'none',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            ) : (
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
               </svg>
-              Print
-            </button>
-            <button
-              onClick={handleDownloadExcel}
-              style={{
-                padding: '8px 20px',
-                fontSize: '13px',
-                fontWeight: '700',
-                color: '#fff',
-                backgroundColor: '#0d6939',
-                border: 'none',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            )}
+          </button>
+          <button 
+            onClick={handleDownloadPdf} 
+            disabled={isPdfGenerating}
+            title="Download PDF"
+            className="p-2.5 text-white bg-gradient-to-b from-red-500 to-red-700 rounded-lg hover:from-red-600 hover:to-red-800 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isPdfGenerating ? (
+              <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+                <path d="M12 2a10 10 0 0 1 10 10" />
               </svg>
-              Excel
-            </button>
-          </div>
+            ) : (
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="12" y1="18" x2="12" y2="12" />
+                <line x1="9" y1="15" x2="15" y2="15" />
+              </svg>
+            )}
+          </button>
+          <button onClick={handlePrint} className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-b from-gray-700 to-gray-900 rounded-lg flex items-center gap-2 hover:from-gray-800 hover:to-black hover:shadow-md transition-all duration-200">
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            Print Report
+          </button>
+          <button onClick={handleDownloadExcel} className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-b from-green-600 to-green-800 rounded-lg flex items-center gap-2 hover:from-green-700 hover:to-green-900 hover:shadow-md transition-all duration-200">
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Download Excel
+          </button>
+        </div>
 
-          {/* Report Container */}
-          <div className="print-container" style={{
-            maxWidth: '1600px',
-            margin: '0 auto',
-            backgroundColor: 'white',
-          }}>
-            {/* Header - Compact */}
-            <div style={{
-              textAlign: 'center',
-              padding: '12px 20px',
-              borderBottom: '2px solid #000',
-            }}>
-              <h1 style={{
-                fontSize: '22px',
-                fontWeight: '900',
-                color: '#000',
-                textTransform: 'uppercase',
-                letterSpacing: '1px',
-                marginBottom: '2px',
-              }}>
+        {/* Report Container - Wrapper for centering */}
+        <div className="flex justify-center">
+          <div ref={reportRef} className="w-full max-w-6xl bg-white rounded shadow-sm overflow-hidden">
+            {/* Header - Centered, No Background */}
+            <div className="text-center py-3 border-b-2 border-black">
+              <h1 className="text-lg font-bold text-black uppercase tracking-wide">
                 COTTON CLOTHING BD LTD
               </h1>
-              <h2 style={{
-                fontSize: '13px',
-                fontWeight: '700',
-                color: '#000',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-              }}>
-                CLOSING REPORT [ INPUT SECTION ] &nbsp;|&nbsp; Date: {currentDate}
-              </h2>
-            </div>
-
-            {/* Info Section - Compact */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '8px 20px',
-              backgroundColor: '#f8f8f8',
-              borderBottom: '1px solid #ccc',
-            }}>
-              <div style={{ display: 'flex', gap: '24px' }}>
-                <p style={{ fontSize: '14px', fontWeight: '700', color: '#000' }}>
-                  Buyer: <span style={{ fontWeight: '900' }}>{reportData.meta.buyer}</span>
-                </p>
-                <p style={{ fontSize: '14px', fontWeight: '700', color: '#000' }}>
-                  Style: <span style={{ fontWeight: '900' }}>{reportData.meta.style}</span>
-                </p>
-              </div>
-              <div style={{
-                backgroundColor: '#000',
-                color: '#fff',
-                padding: '6px 16px',
-                fontWeight: '900',
-                fontSize: '14px',
-              }}>
-                {reportData.refNo}
-              </div>
-            </div>
-
-            {/* Data Tables - Compact */}
-            <div style={{ padding: '10px 20px' }}>
-              {reportData.data.map((block, blockIndex) => (
-                <div key={blockIndex} style={{ marginBottom: '16px' }}>
-                  {/* Color Header */}
-                  <div style={{
-                    backgroundColor: '#000',
-                    color: '#fff',
-                    padding: '6px 12px',
-                    fontSize: '14px',
-                    fontWeight: '900',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                  }}>
-                    COLOR: {block.color}
-                  </div>
-
-                  {/* Table */}
-                  <table style={{ width: '100%', fontSize: '15px', border: '2px solid #000' }}>
-                    <thead>
-                      <tr style={{ backgroundColor: '#e8e8e8' }}>
-                        <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: '900', fontSize: '14px', color: '#000', borderBottom: '2px solid #000', borderRight: '1px solid #999', width: '120px' }}>METRICS</th>
-                        {block.sizes.map((s, i) => (
-                          <th key={i} style={{ padding: '6px 8px', textAlign: 'center', fontWeight: '900', fontSize: '15px', color: '#000', borderBottom: '2px solid #000', borderRight: '1px solid #999', backgroundColor: '#d4d4d4' }}>{s.size}</th>
-                        ))}
-                        <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: '900', fontSize: '15px', color: '#fff', borderBottom: '2px solid #000', backgroundColor: '#000' }}>TOTAL</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {/* Order Qty 3% - Light blue background */}
-                      <tr style={{ backgroundColor: '#e3f2fd' }}>
-                        <td style={{ padding: '5px 8px', fontWeight: '900', fontSize: '14px', color: '#000', backgroundColor: '#e3f2fd', borderRight: '2px solid #64b5f6', borderBottom: '1px solid #90caf9' }}>Order Qty 3%</td>
-                        {block.sizes.map((s, i) => (
-                          <td key={i} style={{ padding: '5px 8px', textAlign: 'center', fontWeight: '800', fontSize: '15px', color: '#000', backgroundColor: '#e3f2fd', borderRight: '1px solid #90caf9', borderBottom: '1px solid #90caf9' }}>{s.qty3.toLocaleString()}</td>
-                        ))}
-                        <td style={{ padding: '5px 8px', textAlign: 'center', fontWeight: '900', fontSize: '15px', color: '#fff', backgroundColor: '#1976d2', borderBottom: '1px solid #90caf9' }}>{block.totals.tot3.toLocaleString()}</td>
-                      </tr>
-                      {/* Actual Qty */}
-                      <tr>
-                        <td style={{ padding: '5px 8px', fontWeight: '900', fontSize: '14px', color: '#000', backgroundColor: '#fafafa', borderRight: '2px solid #ccc', borderBottom: '1px solid #ddd' }}>Actual Qty</td>
-                        {block.sizes.map((s, i) => (
-                          <td key={i} style={{ padding: '5px 8px', textAlign: 'center', fontWeight: '700', fontSize: '15px', color: '#000', borderRight: '1px solid #ddd', borderBottom: '1px solid #ddd' }}>{s.actual.toLocaleString()}</td>
-                        ))}
-                        <td style={{ padding: '5px 8px', textAlign: 'center', fontWeight: '900', fontSize: '15px', color: '#000', backgroundColor: '#e0e0e0', borderBottom: '1px solid #ddd' }}>{block.totals.totAct.toLocaleString()}</td>
-                      </tr>
-                      {/* Cutting QC */}
-                      <tr>
-                        <td style={{ padding: '5px 8px', fontWeight: '900', fontSize: '14px', color: '#000', backgroundColor: '#fafafa', borderRight: '2px solid #ccc', borderBottom: '1px solid #ddd' }}>Cutting QC</td>
-                        {block.sizes.map((s, i) => (
-                          <td key={i} style={{ padding: '5px 8px', textAlign: 'center', fontWeight: '700', fontSize: '15px', color: '#000', borderRight: '1px solid #ddd', borderBottom: '1px solid #ddd' }}>{s.cuttingQc.toLocaleString()}</td>
-                        ))}
-                        <td style={{ padding: '5px 8px', textAlign: 'center', fontWeight: '900', fontSize: '15px', color: '#000', backgroundColor: '#e0e0e0', borderBottom: '1px solid #ddd' }}>{block.totals.totCut.toLocaleString()}</td>
-                      </tr>
-                      {/* Input Qty - Green highlight */}
-                      <tr style={{ backgroundColor: '#e8f5e9' }}>
-                        <td style={{ padding: '5px 8px', fontWeight: '900', fontSize: '14px', color: '#000', backgroundColor: '#e8f5e9', borderRight: '2px solid #66bb6a', borderBottom: '1px solid #81c784' }}>Input Qty</td>
-                        {block.sizes.map((s, i) => (
-                          <td key={i} style={{ padding: '5px 8px', textAlign: 'center', color: '#000', fontWeight: '900', fontSize: '16px', backgroundColor: '#e8f5e9', borderRight: '1px solid #81c784', borderBottom: '1px solid #81c784' }}>{s.inputQty.toLocaleString()}</td>
-                        ))}
-                        <td style={{ padding: '5px 8px', textAlign: 'center', color: '#fff', fontWeight: '900', fontSize: '16px', backgroundColor: '#2e7d32', borderBottom: '1px solid #81c784' }}>{block.totals.totInp.toLocaleString()}</td>
-                      </tr>
-                      {/* Balance */}
-                      <tr>
-                        <td style={{ padding: '5px 8px', fontWeight: '900', fontSize: '14px', color: '#000', backgroundColor: '#fafafa', borderRight: '2px solid #ccc', borderBottom: '1px solid #ddd' }}>Balance</td>
-                        {block.sizes.map((s, i) => (
-                          <td key={i} style={{ padding: '5px 8px', textAlign: 'center', color: s.balance !== 0 ? '#c62828' : '#000', fontWeight: '700', fontSize: '15px', borderRight: '1px solid #ddd', borderBottom: '1px solid #ddd' }}>{s.balance.toLocaleString()}</td>
-                        ))}
-                        <td style={{ padding: '5px 8px', textAlign: 'center', color: block.totals.totBal !== 0 ? '#c62828' : '#000', fontWeight: '900', fontSize: '15px', backgroundColor: '#e0e0e0', borderBottom: '1px solid #ddd' }}>{block.totals.totBal.toLocaleString()}</td>
-                      </tr>
-                      {/* Short/Plus */}
-                      <tr>
-                        <td style={{ padding: '5px 8px', fontWeight: '900', fontSize: '14px', color: '#000', backgroundColor: '#fafafa', borderRight: '2px solid #ccc', borderBottom: '1px solid #ddd' }}>Short/Plus</td>
-                        {block.sizes.map((s, i) => (
-                          <td key={i} style={{ padding: '5px 8px', textAlign: 'center', color: s.shortPlus >= 0 ? '#1b5e20' : '#c62828', fontWeight: '800', fontSize: '15px', borderRight: '1px solid #ddd', borderBottom: '1px solid #ddd' }}>{s.shortPlus.toLocaleString()}</td>
-                        ))}
-                        <td style={{ padding: '5px 8px', textAlign: 'center', color: block.totals.totSp >= 0 ? '#1b5e20' : '#c62828', fontWeight: '900', fontSize: '15px', backgroundColor: '#e0e0e0', borderBottom: '1px solid #ddd' }}>{block.totals.totSp.toLocaleString()}</td>
-                      </tr>
-                      {/* Percentage */}
-                      <tr style={{ backgroundColor: '#f5f5f5' }}>
-                        <td style={{ padding: '5px 8px', fontWeight: '900', fontSize: '14px', color: '#000', backgroundColor: '#f5f5f5', borderRight: '2px solid #ccc', borderBottom: '2px solid #000' }}>Percentage %</td>
-                        {block.sizes.map((s, i) => (
-                          <td key={i} style={{ padding: '5px 8px', textAlign: 'center', fontWeight: '700', fontSize: '14px', color: '#000', backgroundColor: '#f5f5f5', borderRight: '1px solid #ddd', borderBottom: '2px solid #000' }}>{s.percentage.toFixed(2)}%</td>
-                        ))}
-                        <td style={{ padding: '5px 8px', textAlign: 'center', fontWeight: '900', fontSize: '14px', color: '#000', backgroundColor: '#e0e0e0', borderBottom: '2px solid #000' }}>{block.totals.totPct.toFixed(2)}%</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              ))}
-            </div>
-
-            {/* Footer - Compact */}
-            <div style={{
-              textAlign: 'center',
-              padding: '8px',
-              borderTop: '1px solid #ccc',
-              backgroundColor: '#f8f8f8',
-            }}>
-              <p style={{ fontSize: '11px', color: '#000' }}>
-                Report Generated By <span style={{ fontWeight: '900' }}>Mehedi Hasan</span>
+              <p className="text-xs text-black mt-0.5">
+                CLOSING REPORT [ INPUT SECTION ]
+              </p>
+              <p className="text-xs text-black mt-0.5 font-medium">
+                Date: {currentDate}
               </p>
             </div>
+
+          {/* Meta Info - Card Style */}
+          <div className="flex justify-between items-center px-4 py-3 border-b border-gray-300 bg-gray-50">
+            <div className="flex gap-4">
+              <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-2 shadow-sm">
+                <p className="text-[10px] text-black uppercase tracking-wide font-medium">Buyer</p>
+                <p className="text-sm text-black font-bold">{reportData.meta.buyer}</p>
+              </div>
+              <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-2 shadow-sm">
+                <p className="text-[10px] text-black uppercase tracking-wide font-medium">Style</p>
+                <p className="text-sm text-black font-bold">{reportData.meta.style}</p>
+              </div>
+            </div>
+            <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-2 shadow-sm text-right">
+              <p className="text-[10px] text-black uppercase tracking-wide font-medium">IR/IB NO</p>
+              <p className="text-sm text-black font-bold">{reportData.refNo}</p>
+            </div>
+          </div>
+
+          {/* Tables */}
+          <div className="p-3">
+            {reportData.data.map((block, idx) => (
+              <div key={idx} className="mb-3">
+                {/* Color Header - Light Orange */}
+                <div className="px-3 py-1.5 text-xs font-bold uppercase text-black border border-[#e8a854]" style={{ backgroundColor: '#fed7aa' }}>
+                  COLOR: {block.color}
+                </div>
+
+                {/* Table */}
+                <table className="w-full text-xs border border-gray-400">
+                  <thead>
+                    <tr className="bg-gray-200">
+                      <th className="px-2 py-1 text-left font-bold text-black border-b border-r border-gray-400 w-24 text-[11px]">SIZE</th>
+                      {block.sizes.map((s, i) => (
+                        <th key={i} className="px-1 py-1 text-center font-bold text-black border-b border-r border-gray-400 text-sm bg-gray-200">{s.size}</th>
+                      ))}
+                      <th className="px-2 py-1 text-center font-bold text-black border-b border-gray-400 bg-gray-300 w-16 text-[11px]">TOTAL</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* Order Qty 3% - Highlighted */}
+                    <tr className="bg-gray-50">
+                      <td className="px-2 py-1 font-bold text-black border-r border-b border-gray-300 text-sm whitespace-nowrap">Order Qty 3%</td>
+                      {block.sizes.map((s, i) => (
+                        <td key={i} className="px-1 py-1 text-center font-bold text-black border-r border-b border-gray-300 text-sm">{s.qty3}</td>
+                      ))}
+                      <td className="px-2 py-1 text-center font-bold text-black border-b border-gray-300 bg-gray-100 text-sm">{block.totals.tot3}</td>
+                    </tr>
+                    {/* Actual Qty */}
+                    <tr>
+                      <td className="px-2 py-1 font-semibold text-black border-r border-b border-gray-300 text-[11px]">Actual Qty</td>
+                      {block.sizes.map((s, i) => (
+                        <td key={i} className="px-1 py-1 text-center font-semibold text-black border-r border-b border-gray-300 text-xs">{s.actual}</td>
+                      ))}
+                      <td className="px-2 py-1 text-center font-bold text-black border-b border-gray-300 bg-gray-50 text-xs">{block.totals.totAct}</td>
+                    </tr>
+                    {/* Cutting QC */}
+                    <tr>
+                      <td className="px-2 py-1 font-semibold text-black border-r border-b border-gray-300 text-[11px]">Cutting QC</td>
+                      {block.sizes.map((s, i) => (
+                        <td key={i} className="px-1 py-1 text-center font-semibold text-black border-r border-b border-gray-300 text-xs">{s.cuttingQc}</td>
+                      ))}
+                      <td className="px-2 py-1 text-center font-bold text-black border-b border-gray-300 bg-gray-50 text-xs">{block.totals.totCut}</td>
+                    </tr>
+                    {/* Input Qty */}
+                    <tr>
+                      <td className="px-2 py-1 font-bold text-black border-r border-b border-gray-300 text-sm">Input Qty</td>
+                      {block.sizes.map((s, i) => (
+                        <td key={i} className="px-1 py-1 text-center font-bold text-black border-r border-b border-gray-300 text-sm">{s.inputQty}</td>
+                      ))}
+                      <td className="px-2 py-1 text-center font-bold text-black border-b border-gray-300 bg-gray-100 text-sm">{block.totals.totInp}</td>
+                    </tr>
+                    {/* Balance */}
+                    <tr>
+                      <td className="px-2 py-1 font-semibold text-black border-r border-b border-gray-300 text-[11px]">Balance</td>
+                      {block.sizes.map((s, i) => (
+                        <td key={i} className="px-1 py-1 text-center font-semibold text-black border-r border-b border-gray-300 text-xs">{s.balance}</td>
+                      ))}
+                      <td className="px-2 py-1 text-center font-bold text-black border-b border-gray-300 bg-gray-50 text-xs">{block.totals.totBal}</td>
+                    </tr>
+                    {/* Short/Plus - Each cell has its own color */}
+                    <tr>
+                      <td className="px-2 py-1 font-semibold text-black border-r border-b border-gray-300 text-[11px]">Short/Plus</td>
+                      {block.sizes.map((s, i) => (
+                        <td key={i} className={`px-1 py-1 text-center font-bold text-black border-r border-b text-xs ${s.shortPlus >= 0 ? 'bg-green-100 border-green-300' : 'bg-red-100 border-red-300'}`}>{s.shortPlus}</td>
+                      ))}
+                      <td className={`px-2 py-1 text-center font-bold text-black border-b text-xs ${block.totals.totSp >= 0 ? 'bg-green-200 border-green-300' : 'bg-red-200 border-red-300'}`}>{block.totals.totSp}</td>
+                    </tr>
+                    {/* Percentage */}
+                    <tr>
+                      <td className="px-2 py-1 font-semibold text-black border-r border-gray-300 text-[11px]">Percentage %</td>
+                      {block.sizes.map((s, i) => (
+                        <td key={i} className="px-1 py-1 text-center font-semibold text-black border-r border-gray-300 text-[11px]">{s.percentage.toFixed(2)}%</td>
+                      ))}
+                      <td className="px-2 py-1 text-center font-bold text-black bg-gray-50 text-[11px]">{block.totals.totPct.toFixed(2)}%</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </div>
+
+          {/* Footer */}
+          <div className="text-center py-2 border-t border-gray-300 bg-gray-50">
+            <p className="text-[10px] text-black">
+              Generated by <span className="font-bold">Mehedi Hasan</span>
+            </p>
           </div>
         </div>
-      </body>
-    </html>
+        </div>
+      </div>
+    </>
   );
 }

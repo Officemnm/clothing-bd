@@ -1,16 +1,31 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { UserIcon, LockClosedIcon, ArrowRightIcon, ExclamationCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
+import Logo from '@/components/Logo';
 
-export default function LoginPage() {
+// Inner component that uses useSearchParams
+function LoginContent() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [inactiveMessage, setInactiveMessage] = useState('');
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Check if user was logged out due to inactivity
+  useEffect(() => {
+    const reason = searchParams.get('reason');
+    if (reason === 'inactive') {
+      setInactiveMessage('নিষ্ক্রিয়তার কারণে আপনাকে স্বয়ংক্রিয়ভাবে লগআউট করা হয়েছে। অনুগ্রহ করে আবার লগইন করুন।');
+      // Clear the URL parameter
+      router.replace('/login', { scroll: false });
+    }
+  }, [searchParams, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,18 +33,58 @@ export default function LoginPage() {
     setError('');
 
     try {
+      // First, clear any existing session cookie via document.cookie - multiple formats for safety
+      document.cookie = 'session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      document.cookie = 'session=; max-age=0; path=/;';
+      
+      // Call logout API and WAIT for response to ensure cookie is cleared
+      const logoutRes = await fetch('/api/auth/logout', { 
+        method: 'POST',
+        credentials: 'include',
+      });
+      
+      // Wait for logout to complete
+      await logoutRes.json();
+      console.log('[Login] Logout completed, cookie should be cleared');
+      
+      // Clear cookie again after logout response
+      document.cookie = 'session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      
+      // Delay to ensure cookie is fully cleared
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Now login with fresh credentials
       const response = await fetch('/api/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store',
+        },
         credentials: 'include',
         cache: 'no-store',
         body: JSON.stringify({ username, password }),
       });
 
       const data = await response.json();
+      
       if (data.success) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        window.location.href = '/dashboard';
+        console.log('[Login] Success for user:', data.user?.username);
+        
+        // Store new login flag in sessionStorage so dashboard knows to refresh
+        sessionStorage.setItem('newLogin', 'true');
+        sessionStorage.setItem('loginUser', data.user?.username || '');
+        
+        // Clear any cached data
+        if ('caches' in window) {
+          const cacheNames = await caches.keys();
+          await Promise.all(cacheNames.map(name => caches.delete(name)));
+        }
+        
+        // Longer delay to ensure new cookie is set
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Force full page reload with cache bypass
+        window.location.href = '/dashboard?fresh=' + Date.now();
       } else {
         setError(data.message || 'Invalid credentials');
       }
@@ -41,7 +96,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 p-6 relative overflow-hidden">
+    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-teal-50 via-cyan-50 to-emerald-50 p-6 relative overflow-hidden">
       {/* Animated Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
@@ -53,7 +108,7 @@ export default function LoginPage() {
             y: [0, -10, 0]
           }}
           transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute -top-32 -right-32 w-96 h-96 bg-gradient-to-br from-indigo-300/60 to-purple-200/40 rounded-full blur-3xl"
+          className="absolute -top-32 -right-32 w-96 h-96 bg-gradient-to-br from-teal-300/60 to-emerald-200/40 rounded-full blur-3xl"
         />
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
@@ -64,7 +119,7 @@ export default function LoginPage() {
             y: [0, 15, 0]
           }}
           transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-          className="absolute -bottom-32 -left-32 w-80 h-80 bg-gradient-to-tr from-pink-300/50 to-rose-200/40 rounded-full blur-3xl"
+          className="absolute -bottom-32 -left-32 w-80 h-80 bg-gradient-to-tr from-cyan-300/50 to-teal-200/40 rounded-full blur-3xl"
         />
         <motion.div
           initial={{ opacity: 0 }}
@@ -73,12 +128,12 @@ export default function LoginPage() {
             rotate: [0, 180, 360]
           }}
           transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
-          className="absolute top-1/4 right-1/4 w-64 h-64 bg-gradient-to-br from-cyan-200/30 to-teal-100/30 rounded-full blur-3xl"
+          className="absolute top-1/4 right-1/4 w-64 h-64 bg-gradient-to-br from-emerald-200/30 to-cyan-100/30 rounded-full blur-3xl"
         />
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 0.15 }}
-          className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%236366f1\' fill-opacity=\'0.15\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')]"
+          className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%2314b8a6\' fill-opacity=\'0.15\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')]"
         />
       </div>
 
@@ -90,12 +145,12 @@ export default function LoginPage() {
         className="w-full max-w-md relative z-10"
       >
         {/* Card Glow Effect */}
-        <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-[26px] blur-lg opacity-30" />
+        <div className="absolute -inset-1 bg-gradient-to-r from-teal-500 via-emerald-500 to-cyan-500 rounded-[26px] blur-lg opacity-30" />
         
-        <div className="relative bg-white rounded-3xl shadow-2xl shadow-indigo-200/50 border border-white/80 p-10 overflow-hidden">
+        <div className="relative bg-white rounded-3xl shadow-2xl shadow-teal-200/50 border border-white/80 p-10 overflow-hidden">
           {/* Subtle inner gradient */}
-          <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-indigo-50 to-transparent rounded-full blur-2xl pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-pink-50 to-transparent rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-teal-50 to-transparent rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-emerald-50 to-transparent rounded-full blur-2xl pointer-events-none" />
           
           {/* Logo & Header */}
           <motion.div
@@ -108,20 +163,18 @@ export default function LoginPage() {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.3 }}
-              className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-2xl shadow-xl shadow-indigo-300/50 mb-5"
+              className="inline-flex items-center justify-center mb-6"
             >
-              <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 7.5A2.5 2.5 0 016.5 5h11A2.5 2.5 0 0120 7.5V9H4V7.5zM4 11h16v5.5A2.5 2.5 0 0117.5 19h-11A2.5 2.5 0 014 16.5V11z" />
-              </svg>
+              <Logo size="xl" animate={true} />
             </motion.div>
             <motion.h1
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4 }}
-              className="text-3xl font-bold bg-gradient-to-r from-slate-800 via-indigo-800 to-purple-800 bg-clip-text text-transparent tracking-tight mb-2"
+              className="text-2xl font-bold bg-gradient-to-r from-slate-800 via-teal-700 to-emerald-700 bg-clip-text text-transparent tracking-tight mb-2"
               style={{ fontFamily: "'Inter', 'SF Pro Display', system-ui, sans-serif" }}
             >
-              Welcome back
+              CLOTHING BD LTD.
             </motion.h1>
             <motion.p
               initial={{ opacity: 0 }}
@@ -129,9 +182,29 @@ export default function LoginPage() {
               transition={{ delay: 0.5 }}
               className="text-slate-500 text-sm font-medium"
             >
-              Sign in to Clothing BD workspace
+              Sign in to your workspace
             </motion.p>
           </motion.div>
+
+          {/* Inactivity Message */}
+          <AnimatePresence mode="wait">
+            {inactiveMessage && (
+              <motion.div
+                initial={{ opacity: 0, y: -10, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: 'auto' }}
+                exit={{ opacity: 0, y: -10, height: 0 }}
+                transition={{ duration: 0.3 }}
+                className="mb-6"
+              >
+                <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl">
+                  <div className="flex-shrink-0 w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
+                    <ClockIcon className="w-4 h-4 text-amber-600" />
+                  </div>
+                  <span className="text-amber-700 text-sm font-medium">{inactiveMessage}</span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Error Message */}
           <AnimatePresence mode="wait">
@@ -171,20 +244,18 @@ export default function LoginPage() {
                   animate={{
                     scale: focusedField === 'username' ? 1.02 : 1,
                     boxShadow: focusedField === 'username'
-                      ? '0 8px 30px rgba(99, 102, 241, 0.15)'
+                      ? '0 8px 30px rgba(20, 184, 166, 0.15)'
                       : '0 2px 10px rgba(0, 0, 0, 0.05)',
                   }}
                   transition={{ duration: 0.2 }}
                   className={`relative overflow-hidden rounded-xl bg-white border-2 transition-colors ${
-                    focusedField === 'username' ? 'border-indigo-400' : 'border-slate-200'
+                    focusedField === 'username' ? 'border-teal-400' : 'border-slate-200'
                   }`}
                 >
                   <span className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${
-                    focusedField === 'username' ? 'text-indigo-500' : 'text-slate-400'
+                    focusedField === 'username' ? 'text-teal-500' : 'text-slate-400'
                   }`}>
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-                    </svg>
+                    <UserIcon className="w-5 h-5" />
                   </span>
                   <input
                     type="text"
@@ -216,20 +287,18 @@ export default function LoginPage() {
                   animate={{
                     scale: focusedField === 'password' ? 1.02 : 1,
                     boxShadow: focusedField === 'password'
-                      ? '0 8px 30px rgba(99, 102, 241, 0.15)'
+                      ? '0 8px 30px rgba(20, 184, 166, 0.15)'
                       : '0 2px 10px rgba(0, 0, 0, 0.05)',
                   }}
                   transition={{ duration: 0.2 }}
                   className={`relative overflow-hidden rounded-xl bg-white border-2 transition-colors ${
-                    focusedField === 'password' ? 'border-indigo-400' : 'border-slate-200'
+                    focusedField === 'password' ? 'border-teal-400' : 'border-slate-200'
                   }`}
                 >
                   <span className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${
-                    focusedField === 'password' ? 'text-indigo-500' : 'text-slate-400'
+                    focusedField === 'password' ? 'text-teal-500' : 'text-slate-400'
                   }`}>
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-                    </svg>
+                    <LockClosedIcon className="w-5 h-5" />
                   </span>
                   <input
                     type="password"
@@ -256,9 +325,9 @@ export default function LoginPage() {
               <motion.button
                 type="submit"
                 disabled={isLoading}
-                whileHover={{ scale: 1.02, boxShadow: '0 15px 40px rgba(99, 102, 241, 0.35)' }}
+                whileHover={{ scale: 1.02, boxShadow: '0 15px 40px rgba(20, 184, 166, 0.35)' }}
                 whileTap={{ scale: 0.98 }}
-                className="relative w-full py-4 px-6 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white text-[15px] font-semibold rounded-xl shadow-xl shadow-indigo-300/40 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed transition-all duration-300 overflow-hidden group"
+                className="relative w-full py-4 px-6 bg-gradient-to-r from-teal-500 via-emerald-500 to-cyan-500 text-white text-[15px] font-semibold rounded-xl shadow-xl shadow-teal-300/40 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed transition-all duration-300 overflow-hidden group"
                 style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
               >
                 {/* Shine effect */}
@@ -289,17 +358,7 @@ export default function LoginPage() {
                       className="flex items-center gap-2 relative z-10"
                     >
                       <span>Sign in</span>
-                      <motion.svg
-                        initial={{ x: 0 }}
-                        whileHover={{ x: 4 }}
-                        className="w-5 h-5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                      </motion.svg>
+                      <ArrowRightIcon className="w-5 h-5" />
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -314,12 +373,30 @@ export default function LoginPage() {
             transition={{ delay: 0.7 }}
             className="mt-8 pt-6 border-t border-slate-100 text-center relative z-10"
           >
-            <p className="text-slate-400 text-xs font-medium">
-              <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent font-bold">Clothing BD</span> • Premium Business Portal
+            <p className="text-slate-400 text-xs font-medium mb-1">
+              <span className="bg-gradient-to-r from-teal-500 to-emerald-500 bg-clip-text text-transparent font-bold">CLOTHING BD LTD.</span>
+            </p>
+            <p className="text-slate-400 text-[10px]">
+              System developed by <span className="font-semibold text-slate-500">MEHEDI HASAN</span>
             </p>
           </motion.div>
         </div>
       </motion.div>
     </div>
+  );
+}
+
+// Main component with Suspense boundary
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-teal-50 via-cyan-50 to-emerald-50">
+        <div className="animate-pulse">
+          <Logo size="xl" />
+        </div>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }

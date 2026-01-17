@@ -163,3 +163,45 @@ export async function getUserByUsername(username: string): Promise<User | null> 
   const users = await getUsers();
   return users[username] || null;
 }
+
+export async function updateUserProfile(
+  username: string,
+  updates: {
+    phone?: string;
+    email?: string;
+    designation?: string;
+    photo?: string;
+    password?: string;
+  }
+): Promise<boolean> {
+  const collection = await getCollection(COLLECTIONS.USERS);
+  const users = await getUsers();
+  
+  if (!users[username]) {
+    return false;
+  }
+  
+  if (updates.phone !== undefined) {
+    users[username].phone = updates.phone;
+  }
+  if (updates.email !== undefined) {
+    users[username].email = updates.email;
+  }
+  if (updates.designation !== undefined) {
+    users[username].designation = updates.designation;
+  }
+  if (updates.photo !== undefined) {
+    users[username].photo = updates.photo;
+  }
+  if (updates.password !== undefined) {
+    users[username].password = updates.password;
+  }
+  
+  await collection.replaceOne(
+    createFilter('global_users'),
+    { _id: 'global_users', data: users },
+    { upsert: true }
+  );
+  
+  return true;
+}

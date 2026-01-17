@@ -133,7 +133,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const { ref: refArr } = await params;
     const ref = refArr.join('/');
-    const { line, color, size, qty, date } = await request.json();
+    const { line, color, size, qty, date, itemType } = await request.json();
     
     if (!line || !color || !size || !qty) {
       return NextResponse.json({ success: false, message: 'All fields required' }, { status: 400 });
@@ -143,7 +143,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       line: line.toString(),
       color: color.toString(),
       size: size.toString(),
-      qty: Number(qty)
+      qty: Number(qty),
+      itemType: itemType || 'Top'
     }, date);
     
     if (!booking) {
@@ -170,7 +171,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     const { ref: refArr } = await params;
     const ref = refArr.join('/');
-    const { index, line, color, size, qty, date } = await request.json();
+    const { index, line, color, size, qty, date, itemType } = await request.json();
     
     if (index === undefined || !line || !color || !size || !qty) {
       return NextResponse.json({ success: false, message: 'All fields required including index' }, { status: 400 });
@@ -181,7 +182,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       line: line.toString(),
       color: color.toString(),
       size: size.toString(),
-      qty: Number(qty)
+      qty: Number(qty),
+      itemType: itemType || 'Top'
     });
     
     if (!booking) {

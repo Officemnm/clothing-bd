@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchClosingReportData, calculateMetrics, calculateTotals } from '@/lib/closing';
+import { getSession } from '@/lib/session';
+import { updateClosingStats } from '@/lib/stats';
 
 export async function POST(request: NextRequest) {
   try {
+    // Get session for username
+    const session = await getSession();
+    
     const { refNo } = await request.json();
 
     if (!refNo || refNo.trim() === '') {
@@ -42,6 +47,11 @@ export async function POST(request: NextRequest) {
       };
     });
 
+    // Update stats/history for dashboard
+    if (session?.username) {
+      await updateClosingStats(session.username, refNo.trim().toUpperCase(), 'success');
+    }
+
     return NextResponse.json({
       success: true,
       data: processedData,
@@ -53,6 +63,17 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Closing report error:', error);
+    
+    // Log failed attempt if session exists
+    const session = await getSession();
+    if (session?.username) {
+      try {
+        await updateClosingStats(session.username, 'Unknown', 'failed');
+      } catch (e) {
+        console.error('Failed to log failed closing stats:', e);
+      }
+    }
+    
     return NextResponse.json(
       { success: false, message: 'Server error. Please try again.' },
       { status: 500 }

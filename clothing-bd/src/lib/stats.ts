@@ -15,6 +15,7 @@ interface HistoryItem {
   iso_time?: string;
   file_count?: number;
   action?: string;
+  status?: 'success' | 'failed';
 }
 
 interface AccessoryData {
@@ -188,4 +189,44 @@ function generateUserUsage(history: HistoryItem[]) {
     .map(([name, data]) => ({ name, ...data }))
     .sort((a, b) => b.total - a.total)
     .slice(0, 10);
+}
+
+// Update stats when closing report is generated
+export async function updateClosingStats(
+  username: string,
+  refNo: string,
+  status: 'success' | 'failed' = 'success'
+): Promise<void> {
+  const statsCol = await getCollection(COLLECTIONS.STATS);
+  
+  const now = new Date();
+  const newRecord = {
+    ref: refNo,
+    user: username,
+    date: now.toISOString().split('T')[0],
+    display_date: now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+    time: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
+    type: 'Closing Report',
+    iso_time: now.toISOString(),
+    status,
+  };
+  
+  // Get current stats
+  const statsRecord = await statsCol.findOne(createFilter('dashboard_stats')) as { data: StatsData } | null;
+  const downloads = statsRecord?.data?.downloads || [];
+
+  // Add to beginning
+  downloads.unshift(newRecord);
+
+  // Keep only last 5000
+  if (downloads.length > 5000) {
+    downloads.length = 5000;
+  }
+
+  // Save
+  await statsCol.updateOne(
+    createFilter('dashboard_stats'),
+    { $set: { 'data.downloads': downloads } },
+    { upsert: true }
+  );
 }

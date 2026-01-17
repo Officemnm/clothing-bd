@@ -9,8 +9,13 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Clothing BD - Business Portal",
-  description: "Premium business management portal for Clothing BD",
+  title: "Clothing BD LTD.",
+  description: "Premium business management portal for Clothing BD LTD.",
+  icons: {
+    icon: "/logo.svg",
+    shortcut: "/logo.svg",
+    apple: "/logo.svg",
+  },
 };
 
 export default function RootLayout({

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Challan {
   date: string;
@@ -9,6 +10,7 @@ interface Challan {
   color: string;
   size: string;
   qty: number;
+  itemType?: 'Top' | 'Btm';
 }
 
 interface BookingData {
@@ -23,7 +25,6 @@ interface BookingData {
 export default function AccessoriesDetailPage() {
   const router = useRouter();
   const params = useParams();
-  // Handle catch-all route - ref can be array like ["508", "057", "MASTER"]
   const refParam = params.ref;
   const ref = Array.isArray(refParam) ? refParam.join('/') : (refParam as string);
 
@@ -38,7 +39,6 @@ export default function AccessoriesDetailPage() {
   const [successMsg, setSuccessMsg] = useState('');
   const [userRole, setUserRole] = useState('');
 
-  // Challan form
   const [challanDate, setChallanDate] = useState(() => {
     const today = new Date();
     const dd = String(today.getDate()).padStart(2, '0');
@@ -50,6 +50,7 @@ export default function AccessoriesDetailPage() {
   const [challanColor, setChallanColor] = useState('');
   const [challanSize, setChallanSize] = useState('ALL');
   const [challanQty, setChallanQty] = useState('');
+  const [challanItemType, setChallanItemType] = useState<'Top' | 'Btm'>('Top');
 
   useEffect(() => {
     loadBooking();
@@ -145,6 +146,7 @@ export default function AccessoriesDetailPage() {
           color: challanColor,
           size: challanSize,
           qty: parseInt(challanQty),
+          itemType: challanItemType,
         }),
       });
 
@@ -156,6 +158,8 @@ export default function AccessoriesDetailPage() {
         setChallanQty('');
         setSuccessMsg('Challan added successfully');
         setTimeout(() => setSuccessMsg(''), 3000);
+        // Redirect to print preview with itemType
+        window.open(`/accessories-preview?ref=${ref}&itemType=${challanItemType}`, '_blank');
       } else {
         setError(data.message || 'Failed to add challan');
       }
@@ -198,6 +202,7 @@ export default function AccessoriesDetailPage() {
     setChallanColor(challan.color);
     setChallanSize(challan.size);
     setChallanQty(String(challan.qty));
+    setChallanItemType(challan.itemType || 'Top');
     setEditingIndex(index);
   };
 
@@ -207,6 +212,7 @@ export default function AccessoriesDetailPage() {
     setChallanLine('');
     setChallanSize('ALL');
     setChallanQty('');
+    setChallanItemType('Top');
     // Reset date to today
     const today = new Date();
     const dd = String(today.getDate()).padStart(2, '0');
@@ -235,6 +241,7 @@ export default function AccessoriesDetailPage() {
           color: challanColor,
           size: challanSize,
           qty: parseInt(challanQty),
+          itemType: challanItemType,
         }),
       });
 
@@ -255,533 +262,462 @@ export default function AccessoriesDetailPage() {
   };
 
   // Normalize challans to ensure qty is numeric (avoids string concatenation in totals)
-  const normalizedChallans = (booking?.challans || []).map((c) => ({
+  const normalizedChallans = (booking?.challans || []).map((c, originalIndex) => ({
     ...c,
     qty: Number(c.qty) || 0,
+    originalIndex, // Keep track of original index for editing/deleting
   }));
+
+  // Reverse to show latest challans first
+  const reversedChallans = [...normalizedChallans].reverse();
 
   const totalQty = normalizedChallans.reduce((sum, c) => sum + c.qty, 0);
 
   if (isLoading) {
     return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '60vh',
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            width: '48px',
-            height: '48px',
-            border: '3px solid #e5e7eb',
-            borderTopColor: '#8b5cf6',
-            borderRadius: '50%',
-            animation: 'spin 0.8s linear infinite',
-            margin: '0 auto 16px',
-          }} />
-          <p style={{ color: '#6b7280' }}>Loading booking...</p>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="flex items-center gap-1.5">
+            {[0, 1, 2, 3].map((i) => (
+              <motion.div
+                key={i}
+                className="w-2.5 h-2.5 rounded-full bg-amber-500"
+                animate={{ y: [0, -10, 0], opacity: [0.4, 1, 0.4] }}
+                transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.1, ease: 'easeInOut' }}
+              />
+            ))}
+          </div>
+          <p className="text-sm text-slate-500">Loading booking...</p>
         </div>
-        <style jsx>{`
-          @keyframes spin {
-            to { transform: rotate(360deg); }
-          }
-        `}</style>
       </div>
     );
   }
 
   if (!booking) {
     return (
-      <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-        <div style={{
-          width: '80px',
-          height: '80px',
-          backgroundColor: '#fef2f2',
-          borderRadius: '50%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          margin: '0 auto 20px',
-        }}>
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2">
-            <path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-50 flex items-center justify-center">
+            <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h2 className="text-lg font-semibold text-slate-800 mb-2">Booking Not Found</h2>
+          <p className="text-sm text-slate-500 mb-5">{error}</p>
+          <button
+            onClick={() => router.push('/dashboard/accessories')}
+            className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-lg transition-colors"
+          >
+            Go Back
+          </button>
         </div>
-        <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>
-          Booking Not Found
-        </h2>
-        <p style={{ color: '#6b7280', marginBottom: '20px' }}>{error}</p>
-        <button
-          onClick={() => router.push('/dashboard/accessories')}
-          style={{
-            padding: '12px 24px',
-            backgroundColor: '#8b5cf6',
-            color: 'white',
-            border: 'none',
-            borderRadius: '10px',
-            fontWeight: '600',
-            cursor: 'pointer',
-          }}
-        >
-          Go Back
-        </button>
       </div>
     );
   }
 
   return (
-    <>
-      <div style={{ animation: 'fadeIn 0.4s ease' }}>
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '28px' }}>
-          <div>
-            <button
-              onClick={() => router.push('/dashboard/accessories')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '13px',
-                color: '#6b7280',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                marginBottom: '8px',
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M19 12H5M12 19l-7-7 7-7" />
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="max-w-5xl mx-auto"
+    >
+      {/* Header */}
+      <div className="mb-6">
+        <button
+          onClick={() => router.push('/dashboard/accessories')}
+          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-3 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+          Back to Accessories
+        </button>
+        
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-amber-500 flex items-center justify-center flex-shrink-0">
+              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
               </svg>
-              Back to Accessories
-            </button>
-            <h1 style={{ fontSize: '26px', fontWeight: '700', color: '#1a1a2e', marginBottom: '4px' }}>
-              {booking.ref}
-            </h1>
-            <p style={{ fontSize: '14px', color: '#6b7280' }}>
-              {booking.buyer} • {booking.style}
-            </p>
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-slate-800">{booking.ref}</h1>
+              <p className="text-sm text-slate-500">{booking.buyer} • {booking.style}</p>
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: '10px' }}>
+          
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
-              style={{
-                padding: '10px 16px',
-                fontSize: '13px',
-                fontWeight: '600',
-                color: '#374151',
-                backgroundColor: 'white',
-                border: '1px solid #e5e7eb',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: isRefreshing ? 'spin 1s linear infinite' : 'none' }}>
-                <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              {isRefreshing ? 'Refreshing...' : 'Refresh Colors'}
+              <motion.svg 
+                className="w-4 h-4" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor" 
+                strokeWidth={2}
+                animate={isRefreshing ? { rotate: 360 } : {}}
+                transition={{ duration: 1, repeat: isRefreshing ? Infinity : 0, ease: 'linear' }}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </motion.svg>
+              Refresh
             </button>
             <button
               onClick={() => window.open(`/accessories-preview?ref=${ref}`, '_blank')}
-              style={{
-                padding: '10px 16px',
-                fontSize: '13px',
-                fontWeight: '600',
-                color: '#8b5cf6',
-                backgroundColor: '#faf5ff',
-                border: '1px solid #e9d5ff',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2z" />
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2z" />
               </svg>
-              Print Preview
+              Print
             </button>
             {userRole === 'admin' && (
               <button
                 onClick={handleDeleteBooking}
                 disabled={isDeleting}
-                style={{
-                  padding: '10px 16px',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  color: '#dc2626',
-                  backgroundColor: '#fef2f2',
-                  border: '1px solid #fecaca',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
-                {isDeleting ? 'Deleting...' : 'Delete Booking'}
+                {isDeleting ? 'Deleting...' : 'Delete'}
               </button>
             )}
           </div>
         </div>
+      </div>
 
-        {/* Messages */}
+      {/* Messages */}
+      <AnimatePresence>
         {error && (
-          <div style={{
-            backgroundColor: '#fef2f2',
-            border: '1px solid #fecaca',
-            borderRadius: '12px',
-            padding: '12px 16px',
-            marginBottom: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-          }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2">
-              <path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3"
+          >
+            <svg className="w-5 h-5 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <p style={{ color: '#dc2626', fontSize: '14px', margin: 0 }}>{error}</p>
-            <button onClick={() => setError('')} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626' }}>×</button>
-          </div>
+            <p className="text-sm font-medium text-red-700 flex-1">{error}</p>
+            <button onClick={() => setError('')} className="text-red-500 hover:text-red-700">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </motion.div>
         )}
+      </AnimatePresence>
 
+      <AnimatePresence>
         {successMsg && (
-          <div style={{
-            backgroundColor: '#f0fdf4',
-            border: '1px solid #bbf7d0',
-            borderRadius: '12px',
-            padding: '12px 16px',
-            marginBottom: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-          }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2">
-              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="mb-5 p-4 bg-green-50 border border-green-200 rounded-xl flex items-center gap-3"
+          >
+            <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <p style={{ color: '#16a34a', fontSize: '14px', margin: 0 }}>{successMsg}</p>
-          </div>
+            <p className="text-sm font-medium text-green-700">{successMsg}</p>
+          </motion.div>
         )}
+      </AnimatePresence>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '400px 1fr', gap: '24px' }}>
-          {/* Add Challan Form */}
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '20px',
-            border: '1px solid #f0f0f0',
-            padding: '28px',
-            height: 'fit-content',
-          }}>
-            <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1a1a2e', marginBottom: '20px' }}>
-              {editingIndex !== null ? `Edit Challan #${editingIndex + 1}` : 'Add New Challan'}
-            </h3>
-            <form onSubmit={editingIndex !== null ? handleUpdateChallan : handleAddChallan}>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '6px', textTransform: 'uppercase' }}>
-                  Date (DD-MM-YYYY)
-                </label>
-                <input
-                  type="text"
-                  value={challanDate}
-                  onChange={(e) => setChallanDate(e.target.value)}
-                  placeholder="DD-MM-YYYY"
-                  required
-                  style={{
-                    width: '100%',
-                    padding: '12px 14px',
-                    fontSize: '14px',
-                    border: '2px solid #e5e7eb',
-                    borderRadius: '10px',
-                    backgroundColor: '#f9fafb',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
+      {/* Add Challan Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="bg-white rounded-xl border border-slate-200 shadow-sm mb-6 overflow-hidden"
+      >
+        <div className="px-5 py-4 border-b border-slate-100 bg-slate-50">
+          <h3 className="text-base font-semibold text-slate-800 flex items-center gap-2">
+            <svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              {editingIndex !== null ? (
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              )}
+            </svg>
+            {editingIndex !== null ? `Edit Challan #${editingIndex + 1}` : 'Add New Challan'}
+          </h3>
+        </div>
+        
+        <form onSubmit={editingIndex !== null ? handleUpdateChallan : handleAddChallan} className="p-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4">
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-1.5 text-xs font-bold text-slate-600 uppercase tracking-wide">
+                <svg className="w-3.5 h-3.5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Date
+              </label>
+              <input
+                type="text"
+                value={challanDate}
+                onChange={(e) => setChallanDate(e.target.value)}
+                placeholder="DD-MM-YYYY"
+                required
+                className="w-full h-11 px-3.5 text-sm font-medium bg-white border-2 border-slate-200 rounded-xl focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10 transition-all shadow-sm"
+              />
+            </div>
 
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '6px', textTransform: 'uppercase' }}>
-                  Line No
-                </label>
-                <input
-                  type="text"
-                  value={challanLine}
-                  onChange={(e) => setChallanLine(e.target.value)}
-                  placeholder="e.g. L-5"
-                  required
-                  style={{
-                    width: '100%',
-                    padding: '12px 14px',
-                    fontSize: '14px',
-                    border: '2px solid #e5e7eb',
-                    borderRadius: '10px',
-                    backgroundColor: '#f9fafb',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-1.5 text-xs font-bold text-slate-600 uppercase tracking-wide">
+                <svg className="w-3.5 h-3.5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7" />
+                </svg>
+                Line No
+              </label>
+              <input
+                type="text"
+                value={challanLine}
+                onChange={(e) => setChallanLine(e.target.value)}
+                placeholder="e.g. 5"
+                required
+                className="w-full h-11 px-3.5 text-sm font-medium bg-white border-2 border-slate-200 rounded-xl focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10 transition-all shadow-sm"
+              />
+            </div>
 
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '6px', textTransform: 'uppercase' }}>
-                  Color
-                </label>
-                <select
-                  value={challanColor}
-                  onChange={(e) => setChallanColor(e.target.value)}
-                  required
-                  style={{
-                    width: '100%',
-                    padding: '12px 14px',
-                    fontSize: '14px',
-                    border: '2px solid #e5e7eb',
-                    borderRadius: '10px',
-                    backgroundColor: '#f9fafb',
-                    boxSizing: 'border-box',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <option value="">Select a color</option>
-                  {booking.colors.map((color, i) => (
-                    <option key={i} value={color}>{color}</option>
-                  ))}
-                </select>
-              </div>
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-1.5 text-xs font-bold text-slate-600 uppercase tracking-wide">
+                <svg className="w-3.5 h-3.5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                </svg>
+                Color
+              </label>
+              <select
+                value={challanColor}
+                onChange={(e) => setChallanColor(e.target.value)}
+                required
+                className="w-full h-11 px-3.5 text-sm font-medium bg-white border-2 border-slate-200 rounded-xl focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10 transition-all cursor-pointer shadow-sm"
+              >
+                <option value="">Select</option>
+                {booking.colors.map((color, i) => (
+                  <option key={i} value={color}>{color}</option>
+                ))}
+              </select>
+            </div>
 
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '6px', textTransform: 'uppercase' }}>
-                  Size
-                </label>
-                <input
-                  type="text"
-                  value={challanSize}
-                  onChange={(e) => setChallanSize(e.target.value)}
-                  placeholder="e.g. M, L, XL"
-                  required
-                  style={{
-                    width: '100%',
-                    padding: '12px 14px',
-                    fontSize: '14px',
-                    border: '2px solid #e5e7eb',
-                    borderRadius: '10px',
-                    backgroundColor: '#f9fafb',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-1.5 text-xs font-bold text-slate-600 uppercase tracking-wide">
+                <svg className="w-3.5 h-3.5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                </svg>
+                Size
+              </label>
+              <input
+                type="text"
+                value={challanSize}
+                onChange={(e) => setChallanSize(e.target.value)}
+                placeholder="e.g. M, L"
+                required
+                className="w-full h-11 px-3.5 text-sm font-medium bg-white border-2 border-slate-200 rounded-xl focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10 transition-all shadow-sm"
+              />
+            </div>
 
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '6px', textTransform: 'uppercase' }}>
-                  Quantity
-                </label>
-                <input
-                  type="number"
-                  value={challanQty}
-                  onChange={(e) => setChallanQty(e.target.value)}
-                  placeholder="0"
-                  required
-                  min="1"
-                  style={{
-                    width: '100%',
-                    padding: '12px 14px',
-                    fontSize: '14px',
-                    border: '2px solid #e5e7eb',
-                    borderRadius: '10px',
-                    backgroundColor: '#f9fafb',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-1.5 text-xs font-bold text-slate-600 uppercase tracking-wide">
+                <svg className="w-3.5 h-3.5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                </svg>
+                Item Type
+              </label>
+              <select
+                value={challanItemType}
+                onChange={(e) => setChallanItemType(e.target.value as 'Top' | 'Btm')}
+                className="w-full h-11 px-3.5 text-sm font-medium bg-white border-2 border-slate-200 rounded-xl focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10 transition-all cursor-pointer shadow-sm"
+              >
+                <option value="Top">TOP</option>
+                <option value="Btm">BOTTOM</option>
+              </select>
+            </div>
 
-              <button
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-1.5 text-xs font-bold text-slate-600 uppercase tracking-wide">
+                <svg className="w-3.5 h-3.5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+                Quantity
+              </label>
+              <input
+                type="number"
+                value={challanQty}
+                onChange={(e) => setChallanQty(e.target.value)}
+                placeholder="0"
+                required
+                min="1"
+                className="w-full h-11 px-3.5 text-sm font-medium bg-white border-2 border-slate-200 rounded-xl focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10 transition-all shadow-sm"
+              />
+            </div>
+
+            <div className="flex items-end gap-2">
+              <motion.button
                 type="submit"
                 disabled={isAddingChallan}
-                style={{
-                  width: '100%',
-                  padding: '14px 20px',
-                  fontSize: '15px',
-                  fontWeight: '600',
-                  color: 'white',
-                  background: editingIndex !== null 
-                    ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' 
-                    : 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-                  border: 'none',
-                  borderRadius: '12px',
-                  cursor: isAddingChallan ? 'not-allowed' : 'pointer',
-                  opacity: isAddingChallan ? 0.7 : 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className={`flex-1 h-11 px-5 text-sm font-bold text-white rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50 shadow-lg ${
+                  editingIndex !== null 
+                    ? 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-amber-500/25' 
+                    : 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-emerald-500/25'
+                }`}
               >
-                {isAddingChallan 
-                  ? (editingIndex !== null ? 'Updating...' : 'Adding...') 
-                  : (editingIndex !== null ? 'Update Challan' : 'Add Challan')
-                }
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  {editingIndex !== null 
-                    ? <path d="M5 13l4 4L19 7" />
-                    : <path d="M12 4v16m8-8H4" />
-                  }
-                </svg>
-              </button>
-
+                {isAddingChallan ? (
+                  <motion.div
+                    className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                  />
+                ) : editingIndex !== null ? (
+                  <>Save</>
+                ) : (
+                  <>Add</>
+                )}
+              </motion.button>
+              
               {editingIndex !== null && (
                 <button
                   type="button"
                   onClick={handleCancelEdit}
-                  style={{
-                    width: '100%',
-                    marginTop: '10px',
-                    padding: '12px 20px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#6b7280',
-                    backgroundColor: '#f3f4f6',
-                    border: 'none',
-                    borderRadius: '12px',
-                    cursor: 'pointer',
-                  }}
+                  className="h-10 px-3 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
                 >
-                  Cancel Edit
+                  Cancel
                 </button>
               )}
-            </form>
+            </div>
           </div>
+        </form>
+      </motion.div>
 
-          {/* Challans List */}
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '20px',
-            border: '1px solid #f0f0f0',
-            overflow: 'hidden',
-          }}>
-            <div style={{
-              padding: '20px 24px',
-              borderBottom: '1px solid #f0f0f0',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}>
-              <div>
-                <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1a1a2e', margin: 0 }}>
-                  Challan Entries
-                </h3>
-                <p style={{ fontSize: '12px', color: '#9ca3af', margin: '2px 0 0 0' }}>
-                  {normalizedChallans.length} challans • Total: <strong style={{ color: '#8b5cf6' }}>{totalQty}</strong> pcs
-                </p>
-              </div>
-            </div>
-
-            <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
-              {normalizedChallans.length === 0 ? (
-                <div style={{ padding: '60px', textAlign: 'center' }}>
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#e5e7eb" strokeWidth="1.5" style={{ margin: '0 auto 12px' }}>
-                    <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <p style={{ color: '#9ca3af', fontSize: '14px', margin: 0 }}>
-                    No challans added yet
-                  </p>
-                </div>
-              ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-                  <thead>
-                    <tr style={{ backgroundColor: '#fafafa' }}>
-                      <th style={{ textAlign: 'left', padding: '12px 20px', fontSize: '11px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>#</th>
-                      <th style={{ textAlign: 'left', padding: '12px 20px', fontSize: '11px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Date</th>
-                      <th style={{ textAlign: 'left', padding: '12px 20px', fontSize: '11px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Line</th>
-                      <th style={{ textAlign: 'left', padding: '12px 20px', fontSize: '11px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Color</th>
-                      <th style={{ textAlign: 'left', padding: '12px 20px', fontSize: '11px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Size</th>
-                      <th style={{ textAlign: 'right', padding: '12px 20px', fontSize: '11px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Qty</th>
-                      {userRole === 'admin' && (
-                        <th style={{ textAlign: 'center', padding: '12px 20px', fontSize: '11px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Action</th>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {normalizedChallans.map((challan, index) => (
-                      <tr 
-                        key={index}
-                        style={{ 
-                          borderBottom: '1px solid #f5f5f5',
-                          backgroundColor: editingIndex === index ? '#fffbeb' : 'transparent',
-                        }}
-                      >
-                        <td style={{ padding: '14px 20px', color: '#9ca3af' }}>{index + 1}</td>
-                        <td style={{ padding: '14px 20px', fontWeight: '500', color: '#1f2937' }}>{challan.date}</td>
-                        <td style={{ padding: '14px 20px', color: '#6b7280' }}>{challan.line}</td>
-                        <td style={{ padding: '14px 20px', color: '#1f2937' }}>{challan.color}</td>
-                        <td style={{ padding: '14px 20px', color: '#6b7280' }}>{challan.size}</td>
-                        <td style={{ padding: '14px 20px', textAlign: 'right', fontWeight: '700', color: '#8b5cf6' }}>
-                          {challan.qty}
-                        </td>
-                        {userRole === 'admin' && (
-                          <td style={{ padding: '14px 20px', textAlign: 'center' }}>
-                            <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                              <button
-                                onClick={() => handleEditChallan(index)}
-                                disabled={editingIndex !== null}
-                                title="Edit"
-                                style={{
-                                  padding: '6px 10px',
-                                  fontSize: '12px',
-                                  fontWeight: '500',
-                                  color: '#f59e0b',
-                                  backgroundColor: 'transparent',
-                                  border: '1px solid #fcd34d',
-                                  borderRadius: '6px',
-                                  cursor: editingIndex !== null ? 'not-allowed' : 'pointer',
-                                  opacity: editingIndex !== null ? 0.5 : 1,
-                                }}
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleDeleteChallan(index)}
-                                disabled={deletingIndex === index}
-                                title="Delete"
-                                style={{
-                                  padding: '6px 10px',
-                                  fontSize: '12px',
-                                  fontWeight: '500',
-                                  color: '#dc2626',
-                                  backgroundColor: 'transparent',
-                                  border: '1px solid #fecaca',
-                                  borderRadius: '6px',
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                {deletingIndex === index ? '...' : 'Del'}
-                              </button>
-                            </div>
-                          </td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
+      {/* Challans List - Premium Design */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="bg-white rounded-2xl border border-slate-200/60 shadow-lg shadow-slate-500/5 overflow-hidden"
+      >
+        <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+              </svg>
+              Challan History
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              <span className="font-semibold text-slate-700">{normalizedChallans.length}</span> challans • Total: <span className="font-bold text-amber-600">{totalQty}</span> pcs
+              <span className="ml-2 text-amber-600 text-[10px] font-medium bg-amber-50 px-1.5 py-0.5 rounded">Latest First</span>
+            </p>
           </div>
         </div>
-      </div>
 
-      <style jsx>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
-    </>
+        {reversedChallans.length === 0 ? (
+          <div className="py-20 text-center bg-gradient-to-b from-white to-slate-50">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 flex items-center justify-center">
+              <svg className="w-8 h-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <p className="text-sm font-medium text-slate-400">No challans added yet</p>
+            <p className="text-xs text-slate-300 mt-1">Add your first challan using the form above</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gradient-to-r from-slate-700 to-slate-800 text-white">
+                  <th className="text-left text-xs font-bold uppercase py-3.5 px-5 tracking-wide">#</th>
+                  <th className="text-left text-xs font-bold uppercase py-3.5 px-5 tracking-wide">Date</th>
+                  <th className="text-left text-xs font-bold uppercase py-3.5 px-5 tracking-wide">Line</th>
+                  <th className="text-left text-xs font-bold uppercase py-3.5 px-5 tracking-wide">Color</th>
+                  <th className="text-left text-xs font-bold uppercase py-3.5 px-5 tracking-wide">Size</th>
+                  <th className="text-center text-xs font-bold uppercase py-3.5 px-5 tracking-wide">Item</th>
+                  <th className="text-right text-xs font-bold uppercase py-3.5 px-5 tracking-wide">Qty</th>
+                  {userRole === 'admin' && (
+                    <th className="text-center text-xs font-bold uppercase py-3.5 px-5 tracking-wide">Action</th>
+                  )}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {reversedChallans.map((challan, displayIndex) => {
+                  const isEditing = editingIndex === challan.originalIndex;
+                  const isLatest = displayIndex === 0;
+                  return (
+                    <tr 
+                      key={challan.originalIndex}
+                      className={`transition-all ${isEditing ? 'bg-amber-50 border-l-4 border-l-amber-400' : isLatest ? 'bg-emerald-50/50' : 'hover:bg-slate-50'}`}
+                    >
+                      <td className="py-3.5 px-5">
+                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${isLatest ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                          {challan.originalIndex + 1}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-5 font-medium text-slate-700">{challan.date}</td>
+                      <td className="py-3.5 px-5">
+                        <span className="inline-flex items-center justify-center px-2.5 py-1 bg-slate-100 text-slate-700 font-bold rounded-lg text-xs">
+                          L-{challan.line}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-5 text-slate-700 font-medium">{challan.color}</td>
+                      <td className="py-3.5 px-5 text-slate-600">{challan.size}</td>
+                      <td className="py-3.5 px-5 text-center">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded text-xs font-bold text-slate-700">
+                          {challan.itemType === 'Btm' ? 'BOTTOM' : 'TOP'}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-5 text-right">
+                        <span className="inline-flex items-center justify-center min-w-[50px] px-3 py-1.5 bg-amber-100 text-amber-700 font-bold rounded-lg">
+                          {challan.qty}
+                        </span>
+                      </td>
+                      {userRole === 'admin' && (
+                        <td className="py-3.5 px-5 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleEditChallan(challan.originalIndex)}
+                              disabled={editingIndex !== null}
+                              className="p-2 text-amber-600 hover:bg-amber-100 rounded-lg transition-colors disabled:opacity-50"
+                              title="Edit"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => handleDeleteChallan(challan.originalIndex)}
+                              disabled={deletingIndex === challan.originalIndex}
+                              className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                              title="Delete"
+                            >
+                              {deletingIndex === challan.originalIndex ? (
+                                <motion.div
+                                  className="w-4 h-4 border-2 border-red-200 border-t-red-600 rounded-full"
+                                  animate={{ rotate: 360 }}
+                                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                                />
+                              ) : (
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              )}
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </motion.div>
+    </motion.div>
   );
 }

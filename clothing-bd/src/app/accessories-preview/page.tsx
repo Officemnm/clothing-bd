@@ -9,6 +9,7 @@ interface Challan {
   color: string;
   size: string;
   qty: number;
+  itemType?: 'Top' | 'Btm';
 }
 
 interface BookingData {
@@ -28,6 +29,7 @@ interface UserData {
 function AccessoriesPreviewContent() {
   const searchParams = useSearchParams();
   const ref = searchParams.get('ref') || '';
+  const itemTypeParam = searchParams.get('itemType') as 'Top' | 'Btm' | null;
 
   const [booking, setBooking] = useState<BookingData | null>(null);
   const [user, setUser] = useState<UserData | null>(null);
@@ -315,7 +317,13 @@ function AccessoriesPreviewContent() {
             </div>
             <div style={{ fontSize: '14px', marginBottom: '8px', fontWeight: 700 }}>
               <span style={{ color: '#555' }}>Item:</span>{' '}
-              <span style={{ border: '1px solid #000', padding: '0 5px' }}>Top</span>
+              <span style={{ 
+                border: '2px solid #000', 
+                padding: '2px 10px', 
+                fontWeight: 900
+              }}>
+                {itemTypeParam === 'Btm' ? 'BOTTOM' : 'TOP'}
+              </span>
             </div>
           </div>
         </div>
