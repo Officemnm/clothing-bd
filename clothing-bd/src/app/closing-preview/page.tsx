@@ -307,79 +307,79 @@ export default function ClosingPreviewPage() {
           {/* Tables */}
           <div className="p-3">
             {reportData.data.map((block, idx) => (
-              <div key={idx} className="mb-3 border border-gray-400 rounded-sm overflow-hidden">
+              <div key={idx} className="mb-3 border-2 border-black rounded-sm overflow-hidden">
                 {/* Color Header - Light Orange */}
-                <div className="px-3 py-1 text-[13px] font-bold uppercase text-black" style={{ backgroundColor: '#fed7aa', borderBottom: '1px solid #e8a854' }}>
+                <div className="px-2 py-0.5 text-[13px] font-bold uppercase text-black" style={{ backgroundColor: '#fed7aa', borderBottom: '2px solid black' }}>
                   {block.color}
                 </div>
 
                 {/* Table */}
-                <table className="w-full text-xs">
+                <table className="w-full text-xs border-collapse">
                   <thead>
                     <tr className="bg-gray-200">
-                      <th className="compact-cell px-1 py-0.5 text-left font-bold text-black border-b border-r border-gray-400 w-24 text-[11px]">SIZE</th>
+                      <th className="px-0 py-0 text-left font-bold text-black border border-black w-auto text-[11px]"><span className="px-1">SIZE</span></th>
                       {block.sizes.map((s, i) => (
-                        <th key={i} className="compact-cell px-0.5 py-0.5 text-center font-bold text-black border-b border-r border-gray-400 text-sm bg-gray-200 border-l border-gray-400">{s.size}</th>
+                        <th key={i} className="px-0 py-0 text-center font-bold text-black border border-black text-sm bg-gray-200"><span className="px-0.5">{s.size}</span></th>
                       ))}
-                      <th className="compact-cell px-1 py-0.5 text-center font-bold text-black border-b border-gray-400 bg-gray-300 w-16 text-[11px]">TOTAL</th>
+                      <th className="px-0 py-0 text-center font-bold text-black border border-black bg-gray-300 w-auto text-[11px]"><span className="px-1">TOTAL</span></th>
                     </tr>
                   </thead>
                   <tbody>
                     {/* Order Qty 3% - Highlighted */}
                     <tr className="bg-gray-50">
-                      <td className="compact-cell px-1 py-0.5 font-bold text-black border-r border-b border-gray-300 text-sm whitespace-nowrap">Order Qty 3%</td>
+                      <td className="px-0 py-0 font-bold text-black border border-black text-sm whitespace-nowrap"><span className="px-1">Order Qty 3%</span></td>
                       {block.sizes.map((s, i) => (
-                        <td key={i} className="compact-cell px-0.5 py-0.5 text-center font-bold text-black border-r border-b border-gray-300 text-sm border-l">{s.qty3}</td>
+                        <td key={i} className="px-0 py-0 text-center font-bold text-black border border-black text-sm"><span className="px-0.5">{s.qty3}</span></td>
                       ))}
-                      <td className="compact-cell px-1 py-0.5 text-center font-bold text-black border-b border-gray-300 bg-gray-100 text-sm">{block.totals.tot3}</td>
+                      <td className="px-0 py-0 text-center font-bold text-black border border-black bg-gray-100 text-sm"><span className="px-1">{block.totals.tot3}</span></td>
                     </tr>
                     {/* Actual Qty */}
                     <tr>
-                      <td className="compact-cell px-1 py-0.5 font-semibold text-black border-r border-b border-gray-300 text-[11px]">Actual Qty</td>
+                      <td className="px-0 py-0 font-semibold text-black border border-black text-[11px]"><span className="px-1">Actual Qty</span></td>
                       {block.sizes.map((s, i) => (
-                        <td key={i} className="compact-cell px-0.5 py-0.5 text-center font-semibold text-black border-r border-b border-gray-300 text-xs border-l">{s.actual}</td>
+                        <td key={i} className="px-0 py-0 text-center font-semibold text-black border border-black text-xs"><span className="px-0.5">{s.actual}</span></td>
                       ))}
-                      <td className="compact-cell px-1 py-0.5 text-center font-bold text-black border-b border-gray-300 bg-gray-50 text-xs">{block.totals.totAct}</td>
+                      <td className="px-0 py-0 text-center font-bold text-black border border-black bg-gray-50 text-xs"><span className="px-1">{block.totals.totAct}</span></td>
                     </tr>
                     {/* Cutting QC */}
                     <tr>
-                      <td className="compact-cell px-1 py-0.5 font-semibold text-black border-r border-b border-gray-300 text-[11px]">Cutting QC</td>
+                      <td className="px-0 py-0 font-semibold text-black border border-black text-[11px]"><span className="px-1">Cutting QC</span></td>
                       {block.sizes.map((s, i) => (
-                        <td key={i} className="compact-cell px-0.5 py-0.5 text-center font-semibold text-black border-r border-b border-gray-300 text-xs border-l">{s.cuttingQc}</td>
+                        <td key={i} className="px-0 py-0 text-center font-semibold text-black border border-black text-xs"><span className="px-0.5">{s.cuttingQc}</span></td>
                       ))}
-                      <td className="compact-cell px-1 py-0.5 text-center font-bold text-black border-b border-gray-300 bg-gray-50 text-xs">{block.totals.totCut}</td>
+                      <td className="px-0 py-0 text-center font-bold text-black border border-black bg-gray-50 text-xs"><span className="px-1">{block.totals.totCut}</span></td>
                     </tr>
                     {/* Input Qty */}
                     <tr>
-                      <td className="compact-cell px-1 py-0.5 font-bold text-black border-r border-b border-gray-300 text-sm">Input Qty</td>
+                      <td className="px-0 py-0 font-bold text-black border border-black text-sm"><span className="px-1">Input Qty</span></td>
                       {block.sizes.map((s, i) => (
-                        <td key={i} className="compact-cell px-0.5 py-0.5 text-center font-bold text-black border-r border-b border-gray-300 text-sm border-l">{s.inputQty}</td>
+                        <td key={i} className="px-0 py-0 text-center font-bold text-black border border-black text-sm"><span className="px-0.5">{s.inputQty}</span></td>
                       ))}
-                      <td className="compact-cell px-1 py-0.5 text-center font-bold text-black border-b border-gray-300 bg-gray-100 text-sm">{block.totals.totInp}</td>
+                      <td className="px-0 py-0 text-center font-bold text-black border border-black bg-gray-100 text-sm"><span className="px-1">{block.totals.totInp}</span></td>
                     </tr>
                     {/* Balance */}
                     <tr>
-                      <td className="compact-cell px-1 py-0.5 font-semibold text-black border-r border-b border-gray-300 text-[11px]">Balance</td>
+                      <td className="px-0 py-0 font-semibold text-black border border-black text-[11px]"><span className="px-1">Balance</span></td>
                       {block.sizes.map((s, i) => (
-                        <td key={i} className="compact-cell px-0.5 py-0.5 text-center font-semibold text-black border-r border-b border-gray-300 text-xs border-l">{s.balance}</td>
+                        <td key={i} className="px-0 py-0 text-center font-semibold text-black border border-black text-xs"><span className="px-0.5">{s.balance}</span></td>
                       ))}
-                      <td className="compact-cell px-1 py-0.5 text-center font-bold text-black border-b border-gray-300 bg-gray-50 text-xs">{block.totals.totBal}</td>
+                      <td className="px-0 py-0 text-center font-bold text-black border border-black bg-gray-50 text-xs"><span className="px-1">{block.totals.totBal}</span></td>
                     </tr>
                     {/* Short/Plus - Each cell has its own color */}
                     <tr>
-                      <td className="compact-cell px-1 py-0.5 font-semibold text-black border-r border-b border-gray-300 text-[11px]">Short/Plus</td>
+                      <td className="px-0 py-0 font-semibold text-black border border-black text-[11px]"><span className="px-1">Short/Plus</span></td>
                       {block.sizes.map((s, i) => (
-                        <td key={i} className={`compact-cell px-0.5 py-0.5 text-center font-bold text-black border-r border-b text-xs border-l ${s.shortPlus >= 0 ? 'bg-green-100 border-green-300' : 'bg-red-100 border-red-300'}`}>{s.shortPlus}</td>
+                        <td key={i} className={`px-0 py-0 text-center font-bold text-black border border-black text-xs ${s.shortPlus >= 0 ? 'bg-green-100' : 'bg-red-100'}`}><span className="px-0.5">{s.shortPlus}</span></td>
                       ))}
-                      <td className={`compact-cell px-1 py-0.5 text-center font-bold text-black border-b text-xs ${block.totals.totSp >= 0 ? 'bg-green-200 border-green-300' : 'bg-red-200 border-red-300'}`}>{block.totals.totSp}</td>
+                      <td className={`px-0 py-0 text-center font-bold text-black border border-black text-xs ${block.totals.totSp >= 0 ? 'bg-green-200' : 'bg-red-200'}`}><span className="px-1">{block.totals.totSp}</span></td>
                     </tr>
                     {/* Percentage */}
                     <tr>
-                      <td className="compact-cell px-1 py-0.5 font-semibold text-black border-r border-gray-300 text-[11px]">Percentage %</td>
+                      <td className="px-0 py-0 font-semibold text-black border border-black text-[11px]"><span className="px-1">Percentage %</span></td>
                       {block.sizes.map((s, i) => (
-                        <td key={i} className="compact-cell px-0.5 py-0.5 text-center font-semibold text-black border-r border-gray-300 text-[11px] border-l">{s.percentage.toFixed(2)}%</td>
+                        <td key={i} className="px-0 py-0 text-center font-semibold text-black border border-black text-[11px]"><span className="px-0.5">{s.percentage.toFixed(2)}%</span></td>
                       ))}
-                      <td className="compact-cell px-1 py-0.5 text-center font-bold text-black bg-gray-50 text-[11px]">{block.totals.totPct.toFixed(2)}%</td>
+                      <td className="px-0 py-0 text-center font-bold text-black border border-black bg-gray-50 text-[11px]"><span className="px-1">{block.totals.totPct.toFixed(2)}%</span></td>
                     </tr>
                   </tbody>
                 </table>

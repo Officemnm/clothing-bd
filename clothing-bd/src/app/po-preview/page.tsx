@@ -304,51 +304,51 @@ export default function POPreviewPage() {
           {/* Tables */}
           <div className="p-3">
             {data.tables.map((table, idx) => (
-              <div key={idx} className="mb-4 border border-gray-400 rounded-sm overflow-hidden">
+              <div key={idx} className="mb-4 border-2 border-black rounded-sm overflow-hidden">
                 {/* Color Header */}
-                <div className="px-3 py-1 text-[13px] font-bold uppercase text-black" style={{ backgroundColor: '#fed7aa', borderBottom: '1px solid #e8a854' }}>
+                <div className="px-2 py-0.5 text-[13px] font-bold uppercase text-black" style={{ backgroundColor: '#fed7aa', borderBottom: '2px solid black' }}>
                   {table.color}
                 </div>
 
                 {/* Table */}
-                <table className="w-full text-xs">
+                <table className="w-full text-xs border-collapse">
                   <thead>
                     <tr className="bg-gray-200">
-                      <th className="compact-cell px-1 py-0.5 text-left font-bold text-black border-b border-r border-gray-400 w-28 text-[11px]">PO No</th>
+                      <th className="px-0 py-0 text-left font-bold text-black border border-black w-auto text-[11px]"><span className="px-1">PO No</span></th>
                       {table.sizes.map((size, i) => (
-                        <th key={i} className="compact-cell px-0.5 py-0.5 text-center font-bold text-black border-b border-r border-gray-400 text-sm bg-gray-200 border-l border-gray-400">{size}</th>
+                        <th key={i} className="px-0 py-0 text-center font-bold text-black border border-black text-sm bg-gray-200"><span className="px-0.5">{size}</span></th>
                       ))}
-                      <th className="compact-cell px-1 py-0.5 text-center font-bold text-black border-b border-gray-400 bg-gray-300 w-20 text-[11px]">TOTAL</th>
+                      <th className="px-0 py-0 text-center font-bold text-black border border-black bg-gray-300 w-auto text-[11px]"><span className="px-1">TOTAL</span></th>
                     </tr>
                   </thead>
                   <tbody>
                     {/* PO Rows */}
                     {table.rows.map((row, rowIdx) => (
                       <tr key={rowIdx}>
-                        <td className="compact-cell px-1 py-0.5 font-bold text-black border-r border-b border-gray-300 text-[11px]">{row.poNo}</td>
+                        <td className="px-0 py-0 font-bold text-black border border-black text-[11px]"><span className="px-1">{row.poNo}</span></td>
                         {row.quantities.map((qty, qtyIdx) => (
-                          <td key={qtyIdx} className={`compact-cell px-0.5 py-0.5 text-center font-semibold border-r border-b border-gray-300 text-xs border-l ${qty === 0 ? 'text-gray-400' : 'text-black'}`}>
-                            {qty === 0 ? '-' : qty}
+                          <td key={qtyIdx} className={`px-0 py-0 text-center font-semibold border border-black text-xs ${qty === 0 ? 'text-gray-400' : 'text-black'}`}>
+                            <span className="px-0.5">{qty === 0 ? '-' : qty}</span>
                           </td>
                         ))}
-                        <td className="compact-cell px-1 py-0.5 text-center font-bold text-black border-b border-gray-300 bg-gray-50 text-xs">{row.total}</td>
+                        <td className="px-0 py-0 text-center font-bold text-black border border-black bg-gray-50 text-xs"><span className="px-1">{row.total}</span></td>
                       </tr>
                     ))}
                     {/* Actual Qty - Highlighted */}
                     <tr className="bg-green-100">
-                      <td className="compact-cell px-1 py-0.5 font-bold text-black border-r border-b border-gray-300 text-sm bg-green-100">Actual Qty</td>
+                      <td className="px-0 py-0 font-bold text-black border border-black text-sm bg-green-100"><span className="px-1">Actual Qty</span></td>
                       {table.actualQty.map((qty, i) => (
-                        <td key={i} className="compact-cell px-0.5 py-0.5 text-center font-bold text-black border-r border-b border-gray-300 text-sm bg-green-100 border-l">{qty}</td>
+                        <td key={i} className="px-0 py-0 text-center font-bold text-black border border-black text-sm bg-green-100"><span className="px-0.5">{qty}</span></td>
                       ))}
-                      <td className="compact-cell px-1 py-0.5 text-center font-bold text-black border-b border-gray-300 bg-green-100 text-sm">{table.actualTotal}</td>
+                      <td className="px-0 py-0 text-center font-bold text-black border border-black bg-green-100 text-sm"><span className="px-1">{table.actualTotal}</span></td>
                     </tr>
                     {/* Order Qty 3% - Highlighted */}
                     <tr className="bg-amber-100">
-                      <td className="compact-cell px-1 py-0.5 font-bold text-black border-r border-b border-gray-300 text-sm whitespace-nowrap bg-amber-100">Order Qty 3%</td>
+                      <td className="px-0 py-0 font-bold text-black border border-black text-sm whitespace-nowrap bg-amber-100"><span className="px-1">Order Qty 3%</span></td>
                       {table.orderQty3Percent.map((qty, i) => (
-                        <td key={i} className="compact-cell px-0.5 py-0.5 text-center font-bold text-black border-r border-b border-gray-300 text-sm bg-amber-100 border-l">{qty}</td>
+                        <td key={i} className="px-0 py-0 text-center font-bold text-black border border-black text-sm bg-amber-100"><span className="px-0.5">{qty}</span></td>
                       ))}
-                      <td className="compact-cell px-1 py-0.5 text-center font-bold text-black border-b border-gray-300 bg-amber-100 text-sm">{table.orderTotal}</td>
+                      <td className="px-0 py-0 text-center font-bold text-black border border-black bg-amber-100 text-sm"><span className="px-1">{table.orderTotal}</span></td>
                     </tr>
                   </tbody>
                 </table>
