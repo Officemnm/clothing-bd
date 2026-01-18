@@ -302,58 +302,76 @@ export default function POPreviewPage() {
           </div>
 
           {/* Tables */}
-          <div className="p-3">
-            {data.tables.map((table, idx) => (
-              <div key={idx} className="mb-4 border-2 border-black rounded-sm overflow-hidden">
-                {/* Color Header */}
-                <div className="px-2 py-0.5 text-[13px] font-bold uppercase text-black" style={{ backgroundColor: '#fed7aa', borderBottom: '2px solid black' }}>
-                  {table.color}
-                </div>
+          <div className="p-2">
+            {(() => {
+              // Find max sizes count for consistent table layout
+              const maxSizes = Math.max(...data.tables.map(t => t.sizes.length));
+              // Dynamic font size based on number of sizes
+              const getFontSize = (count: number) => count <= 4 ? 'text-[13px]' : count <= 6 ? 'text-[12px]' : count <= 8 ? 'text-[11px]' : 'text-[10px]';
+              const getDataFontSize = (count: number) => count <= 4 ? 'text-[12px]' : count <= 6 ? 'text-[11px]' : count <= 8 ? 'text-[10px]' : 'text-[9px]';
+              
+              return data.tables.map((table, idx) => {
+                const fontSize = getFontSize(table.sizes.length);
+                const dataFontSize = getDataFontSize(table.sizes.length);
+                
+                return (
+                  <div key={idx} className="mb-2" style={{ border: '1px solid black', borderRadius: '2px', overflow: 'hidden' }}>
+                    {/* Color Header */}
+                    <div className="px-1 text-[13px] font-bold uppercase text-black" style={{ backgroundColor: '#fed7aa', borderBottom: '1px solid black', lineHeight: '1.4' }}>
+                      {table.color}
+                    </div>
 
-                {/* Table */}
-                <table className="w-full text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-gray-200">
-                      <th className="px-0 py-0 text-left font-bold text-black border border-black w-auto text-[11px]"><span className="px-1">PO No</span></th>
-                      {table.sizes.map((size, i) => (
-                        <th key={i} className="px-0 py-0 text-center font-bold text-black border border-black text-sm bg-gray-200"><span className="px-0.5">{size}</span></th>
-                      ))}
-                      <th className="px-0 py-0 text-center font-bold text-black border border-black bg-gray-300 w-auto text-[11px]"><span className="px-1">TOTAL</span></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {/* PO Rows */}
-                    {table.rows.map((row, rowIdx) => (
-                      <tr key={rowIdx}>
-                        <td className="px-0 py-0 font-bold text-black border border-black text-[11px]"><span className="px-1">{row.poNo}</span></td>
-                        {row.quantities.map((qty, qtyIdx) => (
-                          <td key={qtyIdx} className={`px-0 py-0 text-center font-semibold border border-black text-xs ${qty === 0 ? 'text-gray-400' : 'text-black'}`}>
-                            <span className="px-0.5">{qty === 0 ? '-' : qty}</span>
-                          </td>
+                    {/* Table */}
+                    <table className="w-full" style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                      <colgroup>
+                        <col style={{ width: '70px' }} />
+                        {table.sizes.map((_, i) => <col key={i} />)}
+                        <col style={{ width: '55px' }} />
+                      </colgroup>
+                      <thead>
+                        <tr className="bg-gray-200">
+                          <th className={`text-left font-bold text-black ${fontSize}`} style={{ border: '0.5px solid black', padding: '1px 2px' }}>PO No</th>
+                          {table.sizes.map((size, i) => (
+                            <th key={i} className={`text-center font-bold text-black bg-gray-200 ${fontSize}`} style={{ border: '0.5px solid black', padding: '1px 1px' }}>{size}</th>
+                          ))}
+                          <th className={`text-center font-bold text-black bg-gray-300 ${fontSize}`} style={{ border: '0.5px solid black', padding: '1px 2px' }}>TOTAL</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {/* PO Rows */}
+                        {table.rows.map((row, rowIdx) => (
+                          <tr key={rowIdx}>
+                            <td className={`font-bold text-black ${dataFontSize}`} style={{ border: '0.5px solid black', padding: '1px 2px' }}>{row.poNo}</td>
+                            {row.quantities.map((qty, qtyIdx) => (
+                              <td key={qtyIdx} className={`text-center font-semibold ${dataFontSize} ${qty === 0 ? 'text-gray-400' : 'text-black'}`} style={{ border: '0.5px solid black', padding: '1px 1px' }}>
+                                {qty === 0 ? '-' : qty}
+                              </td>
+                            ))}
+                            <td className={`text-center font-bold text-black bg-gray-50 ${dataFontSize}`} style={{ border: '0.5px solid black', padding: '1px 2px' }}>{row.total}</td>
+                          </tr>
                         ))}
-                        <td className="px-0 py-0 text-center font-bold text-black border border-black bg-gray-50 text-xs"><span className="px-1">{row.total}</span></td>
-                      </tr>
-                    ))}
-                    {/* Actual Qty - Highlighted */}
-                    <tr className="bg-green-100">
-                      <td className="px-0 py-0 font-bold text-black border border-black text-sm bg-green-100"><span className="px-1">Actual Qty</span></td>
-                      {table.actualQty.map((qty, i) => (
-                        <td key={i} className="px-0 py-0 text-center font-bold text-black border border-black text-sm bg-green-100"><span className="px-0.5">{qty}</span></td>
-                      ))}
-                      <td className="px-0 py-0 text-center font-bold text-black border border-black bg-green-100 text-sm"><span className="px-1">{table.actualTotal}</span></td>
-                    </tr>
-                    {/* Order Qty 3% - Highlighted */}
-                    <tr className="bg-amber-100">
-                      <td className="px-0 py-0 font-bold text-black border border-black text-sm whitespace-nowrap bg-amber-100"><span className="px-1">Order Qty 3%</span></td>
-                      {table.orderQty3Percent.map((qty, i) => (
-                        <td key={i} className="px-0 py-0 text-center font-bold text-black border border-black text-sm bg-amber-100"><span className="px-0.5">{qty}</span></td>
-                      ))}
-                      <td className="px-0 py-0 text-center font-bold text-black border border-black bg-amber-100 text-sm"><span className="px-1">{table.orderTotal}</span></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            ))}
+                        {/* Actual Qty - Highlighted */}
+                        <tr className="bg-green-100">
+                          <td className={`font-bold text-black bg-green-100 ${dataFontSize}`} style={{ border: '0.5px solid black', padding: '1px 2px' }}>Actual Qty</td>
+                          {table.actualQty.map((qty, i) => (
+                            <td key={i} className={`text-center font-bold text-black bg-green-100 ${dataFontSize}`} style={{ border: '0.5px solid black', padding: '1px 1px' }}>{qty}</td>
+                          ))}
+                          <td className={`text-center font-bold text-black bg-green-100 ${dataFontSize}`} style={{ border: '0.5px solid black', padding: '1px 2px' }}>{table.actualTotal}</td>
+                        </tr>
+                        {/* Order Qty 3% - Highlighted */}
+                        <tr className="bg-amber-100">
+                          <td className={`font-bold text-black whitespace-nowrap bg-amber-100 ${dataFontSize}`} style={{ border: '0.5px solid black', padding: '1px 2px' }}>Order Qty 3%</td>
+                          {table.orderQty3Percent.map((qty, i) => (
+                            <td key={i} className={`text-center font-bold text-black bg-amber-100 ${dataFontSize}`} style={{ border: '0.5px solid black', padding: '1px 1px' }}>{qty}</td>
+                          ))}
+                          <td className={`text-center font-bold text-black bg-amber-100 ${dataFontSize}`} style={{ border: '0.5px solid black', padding: '1px 2px' }}>{table.orderTotal}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              });
+            })()}
           </div>
 
           {/* Footer */}
