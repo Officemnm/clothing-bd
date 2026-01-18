@@ -305,104 +305,86 @@ export default function ClosingPreviewPage() {
           </div>
 
           {/* Tables */}
-          <div className="p-2">
-            {(() => {
-              // Find max sizes count for consistent table layout
-              const maxSizes = Math.max(...reportData.data.map(b => b.sizes.length));
-              // Dynamic font size based on number of sizes
-              const getFontSize = (count: number) => count <= 4 ? 'text-[13px]' : count <= 6 ? 'text-[12px]' : count <= 8 ? 'text-[11px]' : 'text-[10px]';
-              const getDataFontSize = (count: number) => count <= 4 ? 'text-[12px]' : count <= 6 ? 'text-[11px]' : count <= 8 ? 'text-[10px]' : 'text-[9px]';
-              
-              return reportData.data.map((block, idx) => {
-                const fontSize = getFontSize(block.sizes.length);
-                const dataFontSize = getDataFontSize(block.sizes.length);
-                
-                return (
-                  <div key={idx} className="mb-2" style={{ border: '1px solid black', borderRadius: '2px', overflow: 'hidden' }}>
-                    {/* Color Header - Light Orange */}
-                    <div className="px-1 text-[13px] font-bold uppercase text-black" style={{ backgroundColor: '#fed7aa', borderBottom: '1px solid black', lineHeight: '1.4' }}>
-                      {block.color}
-                    </div>
+          <div className="p-1">
+            {reportData.data.map((block, idx) => (
+              <div key={idx} className="mb-1" style={{ border: '1px solid black', borderRadius: '2px', overflow: 'hidden' }}>
+                {/* Color Header - Light Orange */}
+                <div className="px-1 text-sm font-bold uppercase text-black" style={{ backgroundColor: '#fed7aa', borderBottom: '1px solid black', lineHeight: '1.3' }}>
+                  {block.color}
+                </div>
 
-                    {/* Table */}
-                    <table className="w-full" style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-                      <colgroup>
-                        <col style={{ width: '70px' }} />
-                        {block.sizes.map((_, i) => <col key={i} />)}
-                        <col style={{ width: '55px' }} />
-                      </colgroup>
-                      <thead>
-                        <tr className="bg-gray-200">
-                          <th className={`text-left font-bold text-black ${fontSize}`} style={{ border: '0.5px solid black', padding: '1px 2px' }}>SIZE</th>
-                          {block.sizes.map((s, i) => (
-                            <th key={i} className={`text-center font-bold text-black bg-gray-200 ${fontSize}`} style={{ border: '0.5px solid black', padding: '1px 1px' }}>{s.size}</th>
-                          ))}
-                          <th className={`text-center font-bold text-black bg-gray-300 ${fontSize}`} style={{ border: '0.5px solid black', padding: '1px 2px' }}>TOTAL</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {/* Order Qty 3% */}
-                        <tr className="bg-gray-50">
-                          <td className={`font-bold text-black whitespace-nowrap ${dataFontSize}`} style={{ border: '0.5px solid black', padding: '1px 2px' }}>Order Qty 3%</td>
-                          {block.sizes.map((s, i) => (
-                            <td key={i} className={`text-center font-bold text-black ${dataFontSize}`} style={{ border: '0.5px solid black', padding: '1px 1px' }}>{s.qty3}</td>
-                          ))}
-                          <td className={`text-center font-bold text-black bg-gray-100 ${dataFontSize}`} style={{ border: '0.5px solid black', padding: '1px 2px' }}>{block.totals.tot3}</td>
-                        </tr>
-                        {/* Actual Qty */}
-                        <tr>
-                          <td className={`font-semibold text-black ${dataFontSize}`} style={{ border: '0.5px solid black', padding: '1px 2px' }}>Actual Qty</td>
-                          {block.sizes.map((s, i) => (
-                            <td key={i} className={`text-center font-semibold text-black ${dataFontSize}`} style={{ border: '0.5px solid black', padding: '1px 1px' }}>{s.actual}</td>
-                          ))}
-                          <td className={`text-center font-bold text-black bg-gray-50 ${dataFontSize}`} style={{ border: '0.5px solid black', padding: '1px 2px' }}>{block.totals.totAct}</td>
-                        </tr>
-                        {/* Cutting QC */}
-                        <tr>
-                          <td className={`font-semibold text-black ${dataFontSize}`} style={{ border: '0.5px solid black', padding: '1px 2px' }}>Cutting QC</td>
-                          {block.sizes.map((s, i) => (
-                            <td key={i} className={`text-center font-semibold text-black ${dataFontSize}`} style={{ border: '0.5px solid black', padding: '1px 1px' }}>{s.cuttingQc}</td>
-                          ))}
-                          <td className={`text-center font-bold text-black bg-gray-50 ${dataFontSize}`} style={{ border: '0.5px solid black', padding: '1px 2px' }}>{block.totals.totCut}</td>
-                        </tr>
-                        {/* Input Qty */}
-                        <tr>
-                          <td className={`font-bold text-black ${dataFontSize}`} style={{ border: '0.5px solid black', padding: '1px 2px' }}>Input Qty</td>
-                          {block.sizes.map((s, i) => (
-                            <td key={i} className={`text-center font-bold text-black ${dataFontSize}`} style={{ border: '0.5px solid black', padding: '1px 1px' }}>{s.inputQty}</td>
-                          ))}
-                          <td className={`text-center font-bold text-black bg-gray-100 ${dataFontSize}`} style={{ border: '0.5px solid black', padding: '1px 2px' }}>{block.totals.totInp}</td>
-                        </tr>
-                        {/* Balance */}
-                        <tr>
-                          <td className={`font-semibold text-black ${dataFontSize}`} style={{ border: '0.5px solid black', padding: '1px 2px' }}>Balance</td>
-                          {block.sizes.map((s, i) => (
-                            <td key={i} className={`text-center font-semibold text-black ${dataFontSize}`} style={{ border: '0.5px solid black', padding: '1px 1px' }}>{s.balance}</td>
-                          ))}
-                          <td className={`text-center font-bold text-black bg-gray-50 ${dataFontSize}`} style={{ border: '0.5px solid black', padding: '1px 2px' }}>{block.totals.totBal}</td>
-                        </tr>
-                        {/* Short/Plus */}
-                        <tr>
-                          <td className={`font-semibold text-black ${dataFontSize}`} style={{ border: '0.5px solid black', padding: '1px 2px' }}>Short/Plus</td>
-                          {block.sizes.map((s, i) => (
-                            <td key={i} className={`text-center font-bold text-black ${dataFontSize} ${s.shortPlus >= 0 ? 'bg-green-100' : 'bg-red-100'}`} style={{ border: '0.5px solid black', padding: '1px 1px' }}>{s.shortPlus}</td>
-                          ))}
-                          <td className={`text-center font-bold text-black ${dataFontSize} ${block.totals.totSp >= 0 ? 'bg-green-200' : 'bg-red-200'}`} style={{ border: '0.5px solid black', padding: '1px 2px' }}>{block.totals.totSp}</td>
-                        </tr>
-                        {/* Percentage */}
-                        <tr>
-                          <td className={`font-semibold text-black ${dataFontSize}`} style={{ border: '0.5px solid black', padding: '1px 2px' }}>Percentage %</td>
-                          {block.sizes.map((s, i) => (
-                            <td key={i} className={`text-center font-semibold text-black ${dataFontSize}`} style={{ border: '0.5px solid black', padding: '1px 1px' }}>{s.percentage.toFixed(2)}%</td>
-                          ))}
-                          <td className={`text-center font-bold text-black bg-gray-50 ${dataFontSize}`} style={{ border: '0.5px solid black', padding: '1px 2px' }}>{block.totals.totPct.toFixed(2)}%</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                );
-              });
-            })()}
+                {/* Table */}
+                <table className="w-full" style={{ borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr className="bg-gray-200">
+                      <th className="text-left font-bold text-black text-sm whitespace-nowrap" style={{ border: '0.5px solid black', padding: '0px 3px', width: 'auto' }}>SIZE</th>
+                      {block.sizes.map((s, i) => (
+                        <th key={i} className="text-center font-bold text-black bg-gray-200 text-sm" style={{ border: '0.5px solid black', padding: '0px 2px' }}>{s.size}</th>
+                      ))}
+                      <th className="text-center font-bold text-black bg-gray-300 text-sm whitespace-nowrap" style={{ border: '0.5px solid black', padding: '0px 3px' }}>TOTAL</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* Order Qty 3% */}
+                    <tr className="bg-gray-50">
+                      <td className="font-bold text-black text-sm whitespace-nowrap" style={{ border: '0.5px solid black', padding: '0px 3px' }}>Ord Qty 3%</td>
+                      {block.sizes.map((s, i) => (
+                        <td key={i} className="text-center font-bold text-black text-sm" style={{ border: '0.5px solid black', padding: '0px 2px' }}>{s.qty3}</td>
+                      ))}
+                      <td className="text-center font-bold text-black bg-gray-100 text-sm" style={{ border: '0.5px solid black', padding: '0px 3px' }}>{block.totals.tot3}</td>
+                    </tr>
+                    {/* Actual Qty */}
+                    <tr>
+                      <td className="font-semibold text-black text-sm whitespace-nowrap" style={{ border: '0.5px solid black', padding: '0px 3px' }}>Actual Qty</td>
+                      {block.sizes.map((s, i) => (
+                        <td key={i} className="text-center font-semibold text-black text-sm" style={{ border: '0.5px solid black', padding: '0px 2px' }}>{s.actual}</td>
+                      ))}
+                      <td className="text-center font-bold text-black bg-gray-50 text-sm" style={{ border: '0.5px solid black', padding: '0px 3px' }}>{block.totals.totAct}</td>
+                    </tr>
+                    {/* Cutting QC */}
+                    <tr>
+                      <td className="font-semibold text-black text-sm whitespace-nowrap" style={{ border: '0.5px solid black', padding: '0px 3px' }}>Cutting QC</td>
+                      {block.sizes.map((s, i) => (
+                        <td key={i} className="text-center font-semibold text-black text-sm" style={{ border: '0.5px solid black', padding: '0px 2px' }}>{s.cuttingQc}</td>
+                      ))}
+                      <td className="text-center font-bold text-black bg-gray-50 text-sm" style={{ border: '0.5px solid black', padding: '0px 3px' }}>{block.totals.totCut}</td>
+                    </tr>
+                    {/* Input Qty */}
+                    <tr>
+                      <td className="font-bold text-black text-sm whitespace-nowrap" style={{ border: '0.5px solid black', padding: '0px 3px' }}>Input Qty</td>
+                      {block.sizes.map((s, i) => (
+                        <td key={i} className="text-center font-bold text-black text-sm" style={{ border: '0.5px solid black', padding: '0px 2px' }}>{s.inputQty}</td>
+                      ))}
+                      <td className="text-center font-bold text-black bg-gray-100 text-sm" style={{ border: '0.5px solid black', padding: '0px 3px' }}>{block.totals.totInp}</td>
+                    </tr>
+                    {/* Balance */}
+                    <tr>
+                      <td className="font-semibold text-black text-sm whitespace-nowrap" style={{ border: '0.5px solid black', padding: '0px 3px' }}>Balance</td>
+                      {block.sizes.map((s, i) => (
+                        <td key={i} className="text-center font-semibold text-black text-sm" style={{ border: '0.5px solid black', padding: '0px 2px' }}>{s.balance}</td>
+                      ))}
+                      <td className="text-center font-bold text-black bg-gray-50 text-sm" style={{ border: '0.5px solid black', padding: '0px 3px' }}>{block.totals.totBal}</td>
+                    </tr>
+                    {/* Short/Plus */}
+                    <tr>
+                      <td className="font-semibold text-black text-sm whitespace-nowrap" style={{ border: '0.5px solid black', padding: '0px 3px' }}>Short/Plus</td>
+                      {block.sizes.map((s, i) => (
+                        <td key={i} className={`text-center font-bold text-black text-sm ${s.shortPlus >= 0 ? 'bg-green-100' : 'bg-red-100'}`} style={{ border: '0.5px solid black', padding: '0px 2px' }}>{s.shortPlus}</td>
+                      ))}
+                      <td className={`text-center font-bold text-black text-sm ${block.totals.totSp >= 0 ? 'bg-green-200' : 'bg-red-200'}`} style={{ border: '0.5px solid black', padding: '0px 3px' }}>{block.totals.totSp}</td>
+                    </tr>
+                    {/* Percentage */}
+                    <tr>
+                      <td className="font-semibold text-black text-sm whitespace-nowrap" style={{ border: '0.5px solid black', padding: '0px 3px' }}>Percentage</td>
+                      {block.sizes.map((s, i) => (
+                        <td key={i} className="text-center font-semibold text-black text-xs" style={{ border: '0.5px solid black', padding: '0px 2px' }}>{s.percentage.toFixed(2)}%</td>
+                      ))}
+                      <td className="text-center font-bold text-black bg-gray-50 text-xs" style={{ border: '0.5px solid black', padding: '0px 3px' }}>{block.totals.totPct.toFixed(2)}%</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            ))}
           </div>
 
           {/* Footer */}
