@@ -12,9 +12,9 @@ export const metadata: Metadata = {
   title: "Clothing BD LTD.",
   description: "Premium business management portal for Clothing BD LTD.",
   icons: {
-    icon: "/logo.svg",
-    shortcut: "/logo.svg",
-    apple: "/logo.svg",
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
   },
 };
 

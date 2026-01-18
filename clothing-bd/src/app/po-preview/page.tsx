@@ -190,6 +190,10 @@ export default function POPreviewPage() {
           @page { margin: 4mm; }
           .no-print { display: none !important; }
         }
+        .compact-cell {
+          padding-left: 2px !important;
+          padding-right: 2px !important;
+        }
       `}</style>
       
       <div className="min-h-screen bg-gray-50 p-2 font-sans">
@@ -300,51 +304,51 @@ export default function POPreviewPage() {
           {/* Tables */}
           <div className="p-3">
             {data.tables.map((table, idx) => (
-              <div key={idx} className="mb-4">
+              <div key={idx} className="mb-4 border border-gray-400 rounded-sm overflow-hidden">
                 {/* Color Header */}
-                <div className="px-3 py-1.5 text-xs font-bold uppercase text-black border border-[#e8a854]" style={{ backgroundColor: '#fed7aa' }}>
-                  COLOR: {table.color}
+                <div className="px-3 py-1 text-[13px] font-bold uppercase text-black" style={{ backgroundColor: '#fed7aa', borderBottom: '1px solid #e8a854' }}>
+                  {table.color}
                 </div>
 
                 {/* Table */}
-                <table className="w-full text-xs border border-gray-400">
+                <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-gray-200">
-                      <th className="px-2 py-1 text-left font-bold text-black border-b border-r border-gray-400 w-28 text-[11px]">PO No</th>
+                      <th className="compact-cell px-1 py-0.5 text-left font-bold text-black border-b border-r border-gray-400 w-28 text-[11px]">PO No</th>
                       {table.sizes.map((size, i) => (
-                        <th key={i} className="px-1 py-1 text-center font-bold text-black border-b border-r border-gray-400 text-sm bg-gray-200">{size}</th>
+                        <th key={i} className="compact-cell px-0.5 py-0.5 text-center font-bold text-black border-b border-r border-gray-400 text-sm bg-gray-200 border-l border-gray-400">{size}</th>
                       ))}
-                      <th className="px-2 py-1 text-center font-bold text-black border-b border-gray-400 bg-gray-300 w-20 text-[11px]">TOTAL</th>
+                      <th className="compact-cell px-1 py-0.5 text-center font-bold text-black border-b border-gray-400 bg-gray-300 w-20 text-[11px]">TOTAL</th>
                     </tr>
                   </thead>
                   <tbody>
                     {/* PO Rows */}
                     {table.rows.map((row, rowIdx) => (
                       <tr key={rowIdx}>
-                        <td className="px-2 py-1 font-bold text-black border-r border-b border-gray-300 text-[11px]">{row.poNo}</td>
+                        <td className="compact-cell px-1 py-0.5 font-bold text-black border-r border-b border-gray-300 text-[11px]">{row.poNo}</td>
                         {row.quantities.map((qty, qtyIdx) => (
-                          <td key={qtyIdx} className={`px-1 py-1 text-center font-semibold border-r border-b border-gray-300 text-xs ${qty === 0 ? 'text-gray-400' : 'text-black'}`}>
+                          <td key={qtyIdx} className={`compact-cell px-0.5 py-0.5 text-center font-semibold border-r border-b border-gray-300 text-xs border-l ${qty === 0 ? 'text-gray-400' : 'text-black'}`}>
                             {qty === 0 ? '-' : qty}
                           </td>
                         ))}
-                        <td className="px-2 py-1 text-center font-bold text-black border-b border-gray-300 bg-gray-50 text-xs">{row.total}</td>
+                        <td className="compact-cell px-1 py-0.5 text-center font-bold text-black border-b border-gray-300 bg-gray-50 text-xs">{row.total}</td>
                       </tr>
                     ))}
                     {/* Actual Qty - Highlighted */}
                     <tr className="bg-green-100">
-                      <td className="px-2 py-1 font-bold text-black border-r border-b border-gray-300 text-sm bg-green-100">Actual Qty</td>
+                      <td className="compact-cell px-1 py-0.5 font-bold text-black border-r border-b border-gray-300 text-sm bg-green-100">Actual Qty</td>
                       {table.actualQty.map((qty, i) => (
-                        <td key={i} className="px-1 py-1 text-center font-bold text-black border-r border-b border-gray-300 text-sm bg-green-100">{qty}</td>
+                        <td key={i} className="compact-cell px-0.5 py-0.5 text-center font-bold text-black border-r border-b border-gray-300 text-sm bg-green-100 border-l">{qty}</td>
                       ))}
-                      <td className="px-2 py-1 text-center font-bold text-black border-b border-gray-300 bg-green-100 text-sm">{table.actualTotal}</td>
+                      <td className="compact-cell px-1 py-0.5 text-center font-bold text-black border-b border-gray-300 bg-green-100 text-sm">{table.actualTotal}</td>
                     </tr>
                     {/* Order Qty 3% - Highlighted */}
                     <tr className="bg-amber-100">
-                      <td className="px-2 py-1 font-bold text-black border-r border-b border-gray-300 text-sm whitespace-nowrap bg-amber-100">Order Qty 3%</td>
+                      <td className="compact-cell px-1 py-0.5 font-bold text-black border-r border-b border-gray-300 text-sm whitespace-nowrap bg-amber-100">Order Qty 3%</td>
                       {table.orderQty3Percent.map((qty, i) => (
-                        <td key={i} className="px-1 py-1 text-center font-bold text-black border-r border-b border-gray-300 text-sm bg-amber-100">{qty}</td>
+                        <td key={i} className="compact-cell px-0.5 py-0.5 text-center font-bold text-black border-r border-b border-gray-300 text-sm bg-amber-100 border-l">{qty}</td>
                       ))}
-                      <td className="px-2 py-1 text-center font-bold text-black border-b border-gray-300 bg-amber-100 text-sm">{table.orderTotal}</td>
+                      <td className="compact-cell px-1 py-0.5 text-center font-bold text-black border-b border-gray-300 bg-amber-100 text-sm">{table.orderTotal}</td>
                     </tr>
                   </tbody>
                 </table>
