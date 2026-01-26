@@ -49,7 +49,7 @@ export async function fetchClosingReportData(internalRefNo: string): Promise<Rep
   if (!cookies) return null;
 
   const reportUrl = process.env.ERP_REPORT_URL!;
-  const years = ['2025', '2024', '2023'];
+  const years = ['2026', '2025', '2024', '2023'];
   const companyIds = [1, 2, 3, 4, 5];
 
   let foundData: string | null = null;
