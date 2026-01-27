@@ -9,6 +9,8 @@ const routePermissions: Record<string, string> = {
   '/dashboard/po-generator': 'po_sheet',
   '/dashboard/accessories': 'accessories',
   '/dashboard/closing-report': 'closing',
+  '/dashboard/sewing-closing-report': 'sewing_closing_report',
+  '/dashboard/daily-line-wise-input-report': 'daily_line_wise_input_report',
   '/dashboard/users': 'admin', // Only admin
   '/api/po': 'po_sheet',
   '/api/accessories': 'accessories',

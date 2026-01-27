@@ -21,6 +21,8 @@ import {
   PhoneIcon,
   MapPinIcon,
   Cog6ToothIcon,
+  DocumentChartBarIcon,
+  TableCellsIcon,
 } from '@heroicons/react/24/outline';
 import {
   HomeIcon as HomeIconSolid,
@@ -28,6 +30,8 @@ import {
   CubeIcon as CubeIconSolid,
   ChartBarIcon as ChartBarIconSolid,
   UsersIcon as UsersIconSolid,
+  DocumentChartBarIcon as DocumentChartBarIconSolid,
+  TableCellsIcon as TableCellsIconSolid,
 } from '@heroicons/react/24/solid';
 import { useActivityTimeout } from '@/hooks/useActivityTimeout';
 import Logo from '@/components/Logo';
@@ -65,6 +69,22 @@ const navItems = [
     iconSolid: ChartBarIconSolid,
     permission: 'closing',
     gradient: 'from-emerald-500 to-teal-500'
+  },
+  { 
+    name: 'Sewing Closing Report', 
+    href: '/dashboard/sewing-closing-report', 
+    icon: DocumentChartBarIcon,
+    iconSolid: DocumentChartBarIconSolid,
+    permission: 'sewing_closing_report',
+    gradient: 'from-rose-500 to-pink-500'
+  },
+  { 
+    name: 'Daily Line Wise Input Report', 
+    href: '/dashboard/daily-line-wise-input-report', 
+    icon: TableCellsIcon,
+    iconSolid: TableCellsIconSolid,
+    permission: 'daily_line_wise_input_report',
+    gradient: 'from-sky-500 to-blue-500'
   },
   { 
     name: 'Users', 
