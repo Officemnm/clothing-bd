@@ -191,24 +191,27 @@ function generateUserUsage(history: HistoryItem[]) {
     .slice(0, 10);
 }
 
-// Update stats when closing report is generated
-export async function updateClosingStats(
+// Generic function to add a record to the history
+export async function addHistoryRecord(
   username: string,
-  refNo: string,
-  status: 'success' | 'failed' = 'success'
+  type: 'Closing Report' | 'PO Sheet' | 'Accessories',
+  ref: string,
+  status: 'success' | 'failed',
+  details: Record<string, unknown> = {}
 ): Promise<void> {
   const statsCol = await getCollection(COLLECTIONS.STATS);
   
   const now = new Date();
-  const newRecord = {
-    ref: refNo,
+  const newRecord: HistoryItem = {
+    ref,
     user: username,
     date: now.toISOString().split('T')[0],
-    display_date: now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-    time: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
-    type: 'Closing Report',
+    display_date: now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Dhaka' }),
+    time: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Dhaka' }),
+    type,
     iso_time: now.toISOString(),
     status,
+    ...details,
   };
   
   // Get current stats
@@ -229,4 +232,13 @@ export async function updateClosingStats(
     { $set: { 'data.downloads': downloads } },
     { upsert: true }
   );
+}
+
+// Update stats when closing report is generated
+export async function updateClosingStats(
+  username: string,
+  refNo: string,
+  status: 'success' | 'failed' = 'success'
+): Promise<void> {
+  await addHistoryRecord(username, 'Closing Report', refNo, status);
 }

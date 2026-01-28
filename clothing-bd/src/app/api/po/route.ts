@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
+import { addHistoryRecord } from '@/lib/stats';
 import {
   POMetadata,
   PODataRow,
@@ -22,46 +23,6 @@ async function extractTextFromPDF(buffer: Buffer): Promise<string> {
     return result.text.join('\n');
   }
   return String(result.text || '');
-}
-
-// Update stats in MongoDB
-async function updatePOStats(username: string, fileCount: number, bookingRef: string, status: 'success' | 'failed' = 'success') {
-  try {
-    const { getCollection, COLLECTIONS } = await import('@/lib/mongodb');
-    const collection = await getCollection(COLLECTIONS.STATS);
-    
-    const now = new Date();
-    const newRecord = {
-      ref: bookingRef,
-      user: username,
-      file_count: fileCount,
-      date: now.toISOString().split('T')[0],
-      display_date: now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-      time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
-      type: 'PO Sheet',
-      iso_time: now.toISOString(),
-      status,
-    };
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const statsDoc = await collection.findOne({ _id: 'dashboard_stats' } as any);
-    const downloads = statsDoc?.data?.downloads || [];
-    downloads.unshift(newRecord);
-    
-    // Keep only last 5000 records
-    if (downloads.length > 5000) {
-      downloads.length = 5000;
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await collection.updateOne(
-      { _id: 'dashboard_stats' } as any,
-      { $set: { 'data.downloads': downloads } },
-      { upsert: true }
-    );
-  } catch (error) {
-    console.error('Failed to update PO stats:', error);
-  }
 }
 
 /**
@@ -244,7 +205,7 @@ export async function POST(request: NextRequest) {
     const { tables, grandTotal } = processDataIntoTables(allData);
 
     // Update stats with success
-    await updatePOStats(session.username, files.length, finalMetadata.booking, 'success');
+    await addHistoryRecord(session.username, 'PO Sheet', finalMetadata.booking, 'success', { file_count: files.length });
 
     return NextResponse.json({
       success: true,
@@ -263,7 +224,7 @@ export async function POST(request: NextRequest) {
     const session = await getSession();
     if (session?.username) {
       try {
-        await updatePOStats(session.username, 0, 'Unknown', 'failed');
+        await addHistoryRecord(session.username, 'PO Sheet', 'Unknown', 'failed', { file_count: 0 });
       } catch (e) {
         console.error('Failed to log failed PO stats:', e);
       }
