@@ -258,12 +258,25 @@ export default function DashboardPage() {
   const filteredHistory = useMemo(() => {
     if (!stats?.history) return [];
     const historyToFilter = isAdmin ? stats.history : stats.history.filter(h => h.user?.toLowerCase() === username.toLowerCase());
-    const sorted = [...historyToFilter].sort((a, b) => {
-      const dateA = parseDate(a.date);
-      const dateB = parseDate(b.date);
-      if (dateB.getTime() !== dateA.getTime()) return dateB.getTime() - dateA.getTime();
-      return (b.time || '').localeCompare(a.time || '');
-    });
+    // Combine date and time into a single Date object for accurate sorting
+    const getDateTime = (item: HistoryItem) => {
+      // Try to combine date and time, fallback to just date
+      if (item.date && item.time) {
+        // Support both DD-MM-YYYY and YYYY-MM-DD
+        let [d, m, y] = item.date.split('-');
+        if (y.length === 4) { // YYYY-MM-DD
+          [y, m, d] = [d, m, y];
+        }
+        // time: HH:MM:SS or HH:MM
+        const t = (item.time || '00:00:00').split(':');
+        const hour = parseInt(t[0] || '0', 10);
+        const min = parseInt(t[1] || '0', 10);
+        const sec = parseInt(t[2] || '0', 10);
+        return new Date(parseInt(y), parseInt(m) - 1, parseInt(d), hour, min, sec);
+      }
+      return parseDate(item.date);
+    };
+    const sorted = [...historyToFilter].sort((a, b) => getDateTime(b).getTime() - getDateTime(a).getTime());
     return sorted.filter((item) => {
       const matchesSearch = searchQuery === '' || 
         item.user?.toLowerCase().includes(searchQuery.toLowerCase()) || 
