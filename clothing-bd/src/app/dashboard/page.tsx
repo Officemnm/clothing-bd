@@ -387,7 +387,7 @@ export default function DashboardPage() {
         className="space-y-6"
       >
         {/* Header */}
-        <motion.div variants={fadeInUp} className="flex items-start justify-between">
+        <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div>
             <motion.div 
               initial={{ opacity: 0, x: -20 }}
@@ -401,15 +401,15 @@ export default function DashboardPage() {
               />
               <span className="text-[10px] font-semibold text-teal-600 tracking-wide uppercase">Admin Panel</span>
             </motion.div>
-            <h1 className="text-2xl font-semibold text-slate-800 tracking-tight">{greeting}, {username}</h1>
-            <p className="text-sm text-slate-500 mt-1">Here&apos;s what&apos;s happening with your system today.</p>
+            <h1 className="text-xl sm:text-2xl font-semibold text-slate-800 tracking-tight">{greeting}, {username}</h1>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">Here&apos;s what&apos;s happening with your system today.</p>
           </div>
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="text-right hidden md:block"
+            className="text-left sm:text-right"
           >
-            <p className="text-2xl font-light text-slate-700">{currentTime}</p>
+            <p className="text-xl sm:text-2xl font-light text-slate-700">{currentTime}</p>
             <p className="text-xs text-slate-400 mt-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
           </motion.div>
         </motion.div>
@@ -560,27 +560,65 @@ export default function DashboardPage() {
         {/* Activity Table */}
         <motion.div variants={fadeInUp}>
           <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
-            <div className="p-5 border-b border-slate-100">
-              <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="p-4 sm:p-5 border-b border-slate-100">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                 <div>
                   <h3 className="text-sm font-semibold text-slate-700">Recent Activity</h3>
                   <p className="text-xs text-slate-400 mt-0.5">All user activities across services</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <div className="relative">
+                  <div className="relative flex-1 sm:flex-none">
                     <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                    <input type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-8 pr-3 py-2 text-xs bg-slate-50 border border-slate-200/80 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 w-40" />
+                    <input type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full sm:w-40 pl-8 pr-3 py-2 text-xs bg-slate-50 border border-slate-200/80 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20" />
                   </div>
-                  <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="px-3 py-2 text-xs bg-slate-50 border border-slate-200/80 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 cursor-pointer">
-                    <option value="all">All Types</option><option value="Closing Report">Closing Report</option><option value="PO Sheet">PO Sheet</option><option value="Accessories">Accessories</option>
+                  <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="flex-1 sm:flex-none px-3 py-2 text-xs bg-slate-50 border border-slate-200/80 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 cursor-pointer min-w-0">
+                    <option value="all">All Types</option><option value="Closing Report">Closing</option><option value="PO Sheet">PO</option><option value="Accessories">Accessories</option>
                   </select>
-                  <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="px-3 py-2 text-xs bg-slate-50 border border-slate-200/80 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 cursor-pointer">
-                    <option value="all">All Time</option><option value="today">Today</option><option value="week">This Week</option><option value="month">This Month</option>
+                  <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="flex-1 sm:flex-none px-3 py-2 text-xs bg-slate-50 border border-slate-200/80 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 cursor-pointer min-w-0">
+                    <option value="all">All Time</option><option value="today">Today</option><option value="week">Week</option><option value="month">Month</option>
                   </select>
                 </div>
               </div>
             </div>
-            <div className="overflow-x-auto">
+            {/* Mobile Card View */}
+            <div className="sm:hidden divide-y divide-slate-100">
+              <AnimatePresence>
+                {filteredHistory.length === 0 ? (
+                  <div className="py-12 text-center">
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center gap-2">
+                      <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center">
+                        <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
+                      </div>
+                      <span className="text-xs text-slate-400 font-medium">No records found</span>
+                    </motion.div>
+                  </div>
+                ) : (
+                  filteredHistory.slice(0, 10).map((item, index) => (
+                    <motion.div key={`mobile-${item.date}-${item.time}-${index}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shadow-sm flex-shrink-0">{item.user?.charAt(0).toUpperCase() || '?'}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-medium text-slate-700 truncate">{item.user}</span>
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full flex-shrink-0 ${item.status === 'failed' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                              {item.status === 'failed' ? 'Failed' : 'Success'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className={`inline-flex px-2 py-0.5 text-[10px] font-medium rounded-full ${getTypeBadge(item.type)}`}>{item.type}</span>
+                            <span className="text-[10px] text-slate-400">{item.ref || (item.file_count ? `${item.file_count} Files` : '')}</span>
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-1">{item.display_date || item.date} • {item.time}</p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))
+                )}
+              </AnimatePresence>
+              {filteredHistory.length > 10 && (<div className="p-3 text-center bg-slate-50/30"><p className="text-[10px] text-slate-400">Showing 10 of {filteredHistory.length}</p></div>)}
+            </div>
+            {/* Desktop Table View */}
+            <div className="hidden sm:block overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="bg-slate-50/70">
@@ -645,7 +683,7 @@ export default function DashboardPage() {
   return (
     <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-6">
       {/* Simple Header - Matching Admin Style */}
-      <motion.div variants={fadeInUp} className="flex items-start justify-between">
+      <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
           <motion.div 
             initial={{ opacity: 0, x: -20 }}
@@ -659,15 +697,15 @@ export default function DashboardPage() {
             />
             <span className="text-[11px] font-medium text-teal-600 tracking-wide uppercase">{greeting}</span>
           </motion.div>
-          <h1 className="text-2xl font-semibold text-slate-800 tracking-tight">Welcome back, {username}</h1>
-          <p className="text-sm text-slate-500 mt-1">Your personalized workspace is ready.</p>
+          <h1 className="text-xl sm:text-2xl font-semibold text-slate-800 tracking-tight">Welcome back, {username}</h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">Your personalized workspace is ready.</p>
         </div>
         <motion.div 
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="text-right hidden md:block"
+          className="text-left sm:text-right"
         >
-          <p className="text-2xl font-light text-slate-700">{currentTime}</p>
+          <p className="text-xl sm:text-2xl font-light text-slate-700">{currentTime}</p>
           <p className="text-xs text-slate-400 mt-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
         </motion.div>
       </motion.div>
@@ -871,8 +909,8 @@ export default function DashboardPage() {
       {/* Recent Activity Table */}
       <motion.div variants={fadeInUp}>
         <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
-          <div className="p-5 border-b border-slate-100">
-            <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="p-4 sm:p-5 border-b border-slate-100">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
               <div>
                 <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
                   <svg className="w-4 h-4 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -880,18 +918,52 @@ export default function DashboardPage() {
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">Track your work history</p>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="px-3 py-2 text-xs bg-slate-50 border border-slate-200/80 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 cursor-pointer">
+              <div className="flex gap-2">
+                <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="flex-1 sm:flex-none px-3 py-2 text-xs bg-slate-50 border border-slate-200/80 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 cursor-pointer min-w-0">
                   <option value="all">All Types</option>
                   {allowedServices.map(p => (<option key={p} value={permissionLabels[p] || p}>{permissionLabels[p] || p}</option>))}
                 </select>
-                <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="px-3 py-2 text-xs bg-slate-50 border border-slate-200/80 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 cursor-pointer">
-                  <option value="all">All Time</option><option value="today">Today</option><option value="week">This Week</option><option value="month">This Month</option>
+                <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="flex-1 sm:flex-none px-3 py-2 text-xs bg-slate-50 border border-slate-200/80 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 cursor-pointer min-w-0">
+                  <option value="all">All Time</option><option value="today">Today</option><option value="week">Week</option><option value="month">Month</option>
                 </select>
               </div>
             </div>
           </div>
-          <div className="overflow-x-auto">
+          {/* Mobile Card View for User Activity */}
+          <div className="sm:hidden divide-y divide-slate-100">
+            <AnimatePresence>
+              {filteredHistory.length === 0 ? (
+                <div className="py-12 text-center">
+                  <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center gap-2">
+                    <motion.div animate={{ y: [0, -4, 0] }} transition={{ duration: 2, repeat: Infinity }} className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center">
+                      <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
+                    </motion.div>
+                    <span className="text-xs text-slate-400 font-medium">No activity yet</span>
+                  </motion.div>
+                </div>
+              ) : (
+                filteredHistory.slice(0, 8).map((item, index) => (
+                  <motion.div key={`user-mobile-${item.date}-${item.time}-${index}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`inline-flex px-2 py-0.5 text-[10px] font-medium rounded-full ${getTypeBadge(item.type)}`}>{item.type}</span>
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full ${item.status === 'failed' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                            {item.status === 'failed' ? 'Failed' : 'Success'}
+                          </span>
+                        </div>
+                        <p className="text-sm text-slate-700 font-medium truncate">{item.ref || (item.file_count ? `${item.file_count} Files` : '—')}</p>
+                        <p className="text-[10px] text-slate-400 mt-1">{item.display_date || item.date} • {item.time}</p>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))
+              )}
+            </AnimatePresence>
+            {filteredHistory.length > 8 && (<div className="p-3 text-center bg-slate-50/30"><p className="text-[10px] text-slate-400">Showing 8 of {filteredHistory.length}</p></div>)}
+          </div>
+          {/* Desktop Table View */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="bg-slate-50/70">

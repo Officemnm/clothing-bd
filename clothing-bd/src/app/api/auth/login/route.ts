@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateUser, updateLastLogin } from '@/lib/auth';
 import { encrypt } from '@/lib/session';
+import { initERPCookieOnLogin } from '@/lib/erp-cookie';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -34,6 +35,17 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('[Login API] Credentials valid for:', username, 'role:', user.role);
+
+    // Initialize ERP cookie on successful login (non-blocking)
+    initERPCookieOnLogin().then(success => {
+      if (success) {
+        console.log('[Login API] ERP cookie initialized successfully');
+      } else {
+        console.warn('[Login API] Failed to initialize ERP cookie');
+      }
+    }).catch(err => {
+      console.error('[Login API] ERP cookie init error:', err);
+    });
 
     // Create session token directly and set in response cookie
     // Session expires in 24 hours

@@ -17,10 +17,6 @@ import {
   ChevronLeftIcon,
   MagnifyingGlassIcon,
   BellIcon,
-  CameraIcon,
-  PhoneIcon,
-  MapPinIcon,
-  Cog6ToothIcon,
   DocumentChartBarIcon,
   TableCellsIcon,
 } from '@heroicons/react/24/outline';
@@ -34,6 +30,7 @@ import {
   TableCellsIcon as TableCellsIconSolid,
 } from '@heroicons/react/24/solid';
 import { useActivityTimeout } from '@/hooks/useActivityTimeout';
+import { useERPCookieRefresh } from '@/hooks/useERPCookieRefresh';
 import Logo from '@/components/Logo';
 
 // Navigation items with Heroicons
@@ -187,6 +184,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     onTimeout: handleLogout,
     enabled: !loading && !!user,
     syncWithServer: true,
+  });
+
+  // Background ERP cookie refresh (every 4 minutes)
+  useERPCookieRefresh({
+    enabled: !loading && !!user,
+    onRefreshSuccess: () => {
+      console.log('[Dashboard] ERP cookie refreshed successfully');
+    },
+    onRefreshError: (error) => {
+      console.warn('[Dashboard] ERP cookie refresh failed:', error.message);
+    },
   });
 
   // Ref to track if fetch is in progress
@@ -612,26 +620,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => { setProfileOpen(false); setEditMode(false); setMessage(null); }}
-              className="fixed inset-0 bg-black/50 z-[100]"
+              className="fixed inset-0 bg-black/50 z-[100] backdrop-blur-sm"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-white rounded-2xl shadow-2xl z-[101] overflow-hidden"
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-32px)] max-w-sm bg-white rounded-2xl shadow-2xl z-[101] overflow-hidden max-h-[90vh] overflow-y-auto"
             >
               {/* Close Button */}
               <button
                 onClick={() => { setProfileOpen(false); setEditMode(false); setMessage(null); }}
-                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors z-10"
+                className="absolute top-3 right-3 w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 active:bg-slate-300 flex items-center justify-center text-slate-500 transition-colors z-10"
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
 
               {/* Content */}
-              <div className="p-6">
+              <div className="p-5 sm:p-6">
                 {/* Message */}
                 <AnimatePresence>
                   {message && (
@@ -811,39 +819,43 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </AnimatePresence>
 
       {/* Mobile Header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-lg border-b border-slate-200/60 z-40 flex items-center justify-between px-4 shadow-sm">
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setMobileOpen(true)}
-          className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
-        >
-          <Bars3Icon className="w-5 h-5 text-slate-600" />
-        </motion.button>
-        <div className="flex items-center gap-2">
-          <Logo size="sm" animate={false} />
-          <span className="font-bold text-slate-800 text-sm">Clothing BD</span>
+      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white/98 backdrop-blur-xl border-b border-slate-200/60 z-40 shadow-sm safe-area-inset">
+        <div className="h-full flex items-center justify-between px-4 max-w-screen-xl mx-auto">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setMobileOpen(true)}
+            className="w-11 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors active:bg-slate-300"
+            aria-label="Open menu"
+          >
+            <Bars3Icon className="w-5 h-5 text-slate-700" />
+          </motion.button>
+          <div className="flex items-center gap-2">
+            <Logo size="sm" animate={false} />
+            <span className="font-bold text-slate-800 text-sm tracking-tight">Clothing BD</span>
+          </div>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setProfileOpen(true)}
+            className="w-11 h-11 rounded-xl overflow-hidden ring-2 ring-teal-100 shadow-sm"
+            aria-label="Open profile"
+          >
+            {userData?.photo ? (
+              <Image
+                src={userData.photo}
+                alt="Profile"
+                width={44}
+                height={44}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center text-white text-sm font-bold">
+                {user?.name?.charAt(0).toUpperCase() || 'U'}
+              </div>
+            )}
+          </motion.button>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setProfileOpen(true)}
-          className="w-10 h-10 rounded-xl overflow-hidden ring-2 ring-teal-100"
-        >
-          {userData?.photo ? (
-            <Image
-              src={userData.photo}
-              alt="Profile"
-              width={40}
-              height={40}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center text-white text-sm font-bold">
-              {user?.name?.charAt(0).toUpperCase() || 'U'}
-            </div>
-          )}
-        </motion.button>
       </header>
 
       {/* Mobile Overlay */}
@@ -859,7 +871,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         )}
       </AnimatePresence>
 
-      {/* Mobile Sidebar - Light Theme */}
+      {/* Mobile Sidebar - Clean Modern Design */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.aside
@@ -867,67 +879,46 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
             transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-            className="lg:hidden fixed top-0 left-0 h-full w-[280px] bg-white shadow-2xl z-50 flex flex-col border-r border-slate-200"
+            className="lg:hidden fixed top-0 left-0 h-full w-[280px] max-w-[85vw] bg-white shadow-2xl z-50 flex flex-col"
           >
             {/* Mobile Header */}
-            <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <motion.div 
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: 'spring', stiffness: 300, delay: 0.1 }}
-                >
-                  <Logo size="sm" animate={false} />
-                </motion.div>
-                <motion.span 
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="font-bold text-slate-800 text-base"
-                >
-                  Clothing BD
-                </motion.span>
+            <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100 flex-shrink-0">
+              <div className="flex items-center gap-2.5">
+                <Logo size="sm" animate={false} />
+                <span className="font-bold text-slate-800 text-base">Clothing BD</span>
               </div>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+              <button
                 onClick={() => setMobileOpen(false)}
-                className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
+                className="w-9 h-9 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
               >
                 <XMarkIcon className="w-5 h-5 text-slate-600" />
-              </motion.button>
+              </button>
             </div>
 
             {/* Mobile Navigation */}
-            <nav className="flex-1 py-5 px-4 overflow-y-auto">
-              <p className="px-3 mb-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Menu</p>
-              <div className="space-y-1.5">
+            <nav className="flex-1 py-4 px-3 overflow-y-auto">
+              <p className="px-3 mb-3 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Menu</p>
+              <div className="space-y-1">
                 {filteredNav.map((item, index) => {
                   const active = isActive(item.href);
                   const IconComponent = active ? item.iconSolid : item.icon;
                   return (
                     <motion.div
                       key={item.href}
-                      initial={{ opacity: 0, x: -20 }}
+                      initial={{ opacity: 0, x: -15 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.05 }}
+                      transition={{ delay: index * 0.03 }}
                     >
                       <Link
                         href={item.href}
-                        className={`flex items-center gap-3.5 px-4 py-3.5 rounded-xl transition-all duration-200 ${
+                        className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 ${
                           active 
-                            ? `bg-gradient-to-r ${item.gradient} text-white shadow-lg` 
-                            : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
+                            ? 'bg-teal-500 text-white shadow-md' 
+                            : 'text-slate-600 hover:bg-slate-100'
                         }`}
                       >
                         <IconComponent className={`w-5 h-5 flex-shrink-0 ${active ? 'text-white' : ''}`} />
-                        <span className="text-sm font-semibold">{item.name}</span>
-                        {active && (
-                          <motion.div
-                            layoutId="mobileActiveIndicator"
-                            className="ml-auto w-1.5 h-1.5 rounded-full bg-white/80"
-                          />
-                        )}
+                        <span className="text-sm font-medium">{item.name}</span>
                       </Link>
                     </motion.div>
                   );
@@ -935,82 +926,82 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
             </nav>
 
-            {/* Mobile Logout */}
-            <div className="border-t border-slate-100 p-4">
-              <motion.button
-                whileHover={{ scale: 1.02, x: 4 }}
-                whileTap={{ scale: 0.98 }}
+            {/* Mobile Footer */}
+            <div className="border-t border-slate-100 p-3 flex-shrink-0">
+              <button
                 onClick={handleLogout}
-                className="w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl text-red-500 hover:bg-red-50 transition-all duration-200"
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-slate-600 hover:text-red-500 hover:bg-red-50 transition-all duration-200 font-medium text-sm"
               >
                 <ArrowRightOnRectangleIcon className="w-5 h-5" />
-                <span className="text-sm font-semibold">Logout</span>
-              </motion.button>
+                <span>Logout</span>
+              </button>
             </div>
           </motion.aside>
         )}
       </AnimatePresence>
 
-      {/* Desktop Sidebar - Premium Modern Theme */}
+      {/* Desktop Sidebar - Clean Modern Design */}
       <motion.aside
         initial={false}
         animate={sidebarOpen ? 'expanded' : 'collapsed'}
         variants={sidebarVariants}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="hidden lg:flex fixed top-0 left-0 h-full bg-white z-40 flex-col border-r border-slate-200/60 shadow-sm"
+        className="hidden lg:flex fixed top-0 left-0 h-full bg-white z-40 flex-col border-r border-slate-200/60 shadow-sm overflow-hidden"
       >
         {/* Logo Section */}
-        <div className="h-[72px] flex items-center px-3 border-b border-slate-100 gap-2">
+        <div className="h-[72px] flex items-center px-4 border-b border-slate-100">
           <AnimatePresence mode="wait">
             {sidebarOpen ? (
               <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.2 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
                 className="flex items-center gap-3 flex-1 min-w-0"
               >
                 <Logo size="sm" animate={false} />
                 <div className="flex flex-col min-w-0">
                   <span className="font-bold text-slate-800 text-sm leading-tight truncate">Clothing BD</span>
-                  <span className="text-[10px] text-slate-400 font-medium">Dashboard</span>
+                  <span className="text-[10px] text-slate-400 font-medium">Management System</span>
                 </div>
               </motion.div>
             ) : (
               <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="flex-1 flex justify-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="w-full flex justify-center"
               >
                 <Logo size="sm" animate={false} />
               </motion.div>
             )}
           </AnimatePresence>
-          <motion.button
-            whileHover={{ scale: 1.1, backgroundColor: 'rgb(241 245 249)' }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors flex-shrink-0 hover:bg-slate-100"
-          >
-            <motion.div animate={{ rotate: sidebarOpen ? 0 : 180 }}>
-              <ChevronLeftIcon className="w-4 h-4 text-slate-500" />
-            </motion.div>
-          </motion.button>
+          {sidebarOpen && (
+            <motion.button
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-slate-100 transition-colors flex-shrink-0 ml-2"
+            >
+              <ChevronLeftIcon className="w-4 h-4 text-slate-400" />
+            </motion.button>
+          )}
         </div>
 
         {/* Navigation Section */}
-        <nav className="flex-1 py-5 px-3 overflow-y-auto">
+        <nav className="flex-1 py-4 px-3 overflow-y-auto overflow-x-hidden">
           {sidebarOpen && (
             <motion.p 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="px-3 mb-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+              className="px-2 mb-3 text-[10px] font-semibold text-slate-400 uppercase tracking-wider"
             >
-              Navigation
+              Menu
             </motion.p>
           )}
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             {filteredNav.map((item, index) => {
               const active = isActive(item.href);
               const IconComponent = active ? item.iconSolid : item.icon;
@@ -1019,47 +1010,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <div key={item.href} className="relative group">
                   <Link href={item.href}>
                     <motion.div
-                      initial={{ opacity: 0, x: -20 }}
+                      initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      whileHover={{ scale: 1.02, x: 4 }}
+                      transition={{ delay: index * 0.03 }}
+                      whileHover={{ x: sidebarOpen ? 2 : 0 }}
                       whileTap={{ scale: 0.98 }}
-                      className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 ${
+                      className={`flex items-center ${sidebarOpen ? 'gap-3 px-3' : 'justify-center px-0'} py-2.5 rounded-lg transition-all duration-200 ${
                         active 
-                          ? `bg-gradient-to-r ${item.gradient} text-white shadow-lg` 
-                          : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
+                          ? 'bg-teal-500 text-white shadow-md shadow-teal-500/25' 
+                          : 'text-slate-600 hover:text-slate-800 hover:bg-slate-100'
                       }`}
                     >
-                      <IconComponent className={`w-5 h-5 flex-shrink-0 ${sidebarOpen ? '' : 'mx-auto'} ${active ? 'text-white' : ''}`} />
+                      <IconComponent className={`w-5 h-5 flex-shrink-0 ${active ? 'text-white' : ''}`} />
                       {sidebarOpen && (
-                        <motion.span 
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          className="text-sm font-semibold whitespace-nowrap"
-                        >
+                        <span className="text-sm font-medium whitespace-nowrap overflow-hidden">
                           {item.name}
-                        </motion.span>
-                      )}
-                      {sidebarOpen && active && (
-                        <motion.div
-                          layoutId="desktopActiveIndicator"
-                          className="ml-auto w-1.5 h-1.5 rounded-full bg-white/80"
-                        />
+                        </span>
                       )}
                     </motion.div>
                   </Link>
 
-                  {/* Enhanced Tooltip for collapsed state */}
+                  {/* Tooltip for collapsed state */}
                   {!sidebarOpen && (
-                    <motion.div 
-                      variants={tooltipVariants}
-                      initial="hidden"
-                      whileHover="visible"
-                      className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-2 bg-slate-900 text-white text-xs font-semibold rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50"
-                    >
+                    <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-medium rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 whitespace-nowrap z-50 pointer-events-none">
                       {item.name}
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-2 h-2 bg-slate-900 rotate-45" />
-                    </motion.div>
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-2 h-2 bg-slate-800 rotate-45" />
+                    </div>
                   )}
                 </div>
               );
@@ -1067,28 +1043,42 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </nav>
 
-        {/* Settings & Logout Section */}
-        <div className="border-t border-slate-100 p-3 space-y-1.5">
-          {sidebarOpen && (
-            <motion.p 
+        {/* Bottom Section - Collapse Toggle & Logout */}
+        <div className="border-t border-slate-100 p-3">
+          {/* Expand/Collapse Button - Only when collapsed */}
+          {!sidebarOpen && (
+            <motion.button
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="px-3 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setSidebarOpen(true)}
+              className="w-full flex justify-center py-2.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all duration-200 mb-2"
             >
-              Account
-            </motion.p>
+              <ChevronLeftIcon className="w-5 h-5 rotate-180" />
+            </motion.button>
           )}
-          <motion.button
-            whileHover={{ scale: 1.02, x: 4 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleLogout}
-            className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-red-500 hover:bg-red-50 transition-all duration-200 ${
-              sidebarOpen ? '' : 'justify-center'
-            }`}
-          >
-            <ArrowRightOnRectangleIcon className="w-5 h-5" />
-            {sidebarOpen && <span className="text-sm font-semibold">Logout</span>}
-          </motion.button>
+          
+          {/* Logout Button */}
+          <div className="relative group">
+            <motion.button
+              whileHover={{ scale: sidebarOpen ? 1.01 : 1.05 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleLogout}
+              className={`w-full flex items-center ${sidebarOpen ? 'gap-3 px-3' : 'justify-center'} py-2.5 rounded-lg text-slate-500 hover:text-red-500 hover:bg-red-50 transition-all duration-200`}
+            >
+              <ArrowRightOnRectangleIcon className="w-5 h-5" />
+              {sidebarOpen && <span className="text-sm font-medium">Logout</span>}
+            </motion.button>
+            
+            {/* Tooltip for collapsed state */}
+            {!sidebarOpen && (
+              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-medium rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 whitespace-nowrap z-50 pointer-events-none">
+                Logout
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-2 h-2 bg-slate-800 rotate-45" />
+              </div>
+            )}
+          </div>
         </div>
       </motion.aside>
 
@@ -1163,24 +1153,40 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         initial={false}
         animate={{ marginLeft: sidebarOpen ? 280 : 80 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="min-h-screen bg-slate-50/50 flex flex-col"
+        className="hidden lg:flex min-h-screen bg-slate-50/50 flex-col"
       >
-        <div className="pt-[72px] lg:pt-[72px] flex-1">
-          <div className="p-6 lg:p-8 pt-20 lg:pt-8">
+        <div className="flex-1 pt-[72px]">
+          <div className="p-6 lg:p-8">
             {children}
           </div>
         </div>
         
-        {/* Footer Credit */}
-        <footer className="border-t border-slate-200 bg-gradient-to-r from-slate-100 to-slate-50 py-5 px-6 text-center shadow-inner">
+        {/* Footer Credit - Desktop */}
+        <footer className="border-t border-slate-200 bg-gradient-to-r from-slate-100 to-slate-50 py-4 px-6 text-center">
           <p className="text-sm text-slate-600">
             Developed by <span className="font-bold text-teal-600">MEHEDI HASAN</span> © 2026
           </p>
           <p className="text-xs text-slate-500 mt-1">
-            All rights reserved. Developer reserves the right to modify any part of this system.
+            All rights reserved.
           </p>
         </footer>
       </motion.main>
+
+      {/* Mobile Main Content Area */}
+      <main className="lg:hidden min-h-screen bg-slate-50/50 flex flex-col">
+        <div className="flex-1 pt-16">
+          <div className="p-4 sm:p-6">
+            {children}
+          </div>
+        </div>
+        
+        {/* Footer Credit - Mobile */}
+        <footer className="border-t border-slate-200 bg-gradient-to-r from-slate-100 to-slate-50 py-3 px-4 text-center">
+          <p className="text-xs text-slate-600">
+            Developed by <span className="font-bold text-teal-600">MEHEDI HASAN</span> © 2026
+          </p>
+        </footer>
+      </main>
     </div>
   );
 }

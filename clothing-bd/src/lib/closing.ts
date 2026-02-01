@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio';
+import { getValidERPCookie } from './erp-cookie';
 
 interface ReportBlock {
   style: string;
@@ -11,37 +12,13 @@ interface ReportBlock {
   cutting_qc: string[];
 }
 
+/**
+ * Get authenticated session cookie from ERP
+ * Uses the centralized cookie management system
+ */
 async function getAuthenticatedSession(): Promise<string | null> {
-  const loginUrl = process.env.ERP_LOGIN_URL!;
-  const username = process.env.ERP_USERNAME!;
-  const password = process.env.ERP_PASSWORD!;
-
-  try {
-    const formData = new URLSearchParams();
-    formData.append('txt_userid', username);
-    formData.append('txt_password', password);
-    formData.append('submit', 'Login');
-
-    const response = await fetch(loginUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      },
-      body: formData.toString(),
-      redirect: 'manual',
-    });
-
-    // Get cookies from response
-    const cookies = response.headers.get('set-cookie');
-    if (cookies) {
-      return cookies;
-    }
-    return null;
-  } catch (error) {
-    console.error('Login error:', error);
-    return null;
-  }
+  // Use the centralized ERP cookie system
+  return await getValidERPCookie();
 }
 
 export async function fetchClosingReportData(internalRefNo: string): Promise<ReportBlock[] | null> {
