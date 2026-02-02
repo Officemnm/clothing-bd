@@ -316,31 +316,31 @@ export default function SewingClosingPreviewPage() {
                       <tr className="bg-gray-50">
                         <td className="font-bold text-black text-sm whitespace-nowrap" style={{ border: '0.5px solid black', padding: '0px 3px' }}>Order Qty</td>
                         {block.sizes.map((s, i) => (
-                          <td key={i} className="text-center font-bold text-black text-sm" style={{ border: '0.5px solid black', padding: '0px 2px' }}>{s.orderQty}</td>
+                          <td key={i} className="text-center font-bold text-black text-sm" style={{ border: '0.5px solid black', padding: '0px 2px' }}>{s.orderQty > 0 ? s.orderQty.toLocaleString() : '-'}</td>
                         ))}
-                        <td className="text-center font-bold text-black bg-gray-100 text-sm" style={{ border: '0.5px solid black', padding: '0px 3px' }}>{block.totals.totOrderQty}</td>
+                        <td className="text-center font-bold text-black bg-gray-100 text-sm" style={{ border: '0.5px solid black', padding: '0px 3px' }}>{block.totals.totOrderQty > 0 ? block.totals.totOrderQty.toLocaleString() : '-'}</td>
                       </tr>
                       {/* Input Qty */}
                       <tr>
                         <td className="font-semibold text-black text-sm whitespace-nowrap" style={{ border: '0.5px solid black', padding: '0px 3px' }}>Input Qty</td>
                         {block.sizes.map((s, i) => (
-                          <td key={i} className="text-center font-semibold text-black text-sm" style={{ border: '0.5px solid black', padding: '0px 2px' }}>{s.inputQty}</td>
+                          <td key={i} className="text-center font-semibold text-black text-sm" style={{ border: '0.5px solid black', padding: '0px 2px' }}>{s.inputQty > 0 ? s.inputQty.toLocaleString() : s.inputQty}</td>
                         ))}
-                        <td className="text-center font-bold text-black bg-gray-50 text-sm" style={{ border: '0.5px solid black', padding: '0px 3px' }}>{block.totals.totInputQty}</td>
+                        <td className="text-center font-bold text-black bg-gray-50 text-sm" style={{ border: '0.5px solid black', padding: '0px 3px' }}>{block.totals.totInputQty.toLocaleString()}</td>
                       </tr>
                       {/* Output Qty */}
                       <tr>
                         <td className="font-semibold text-black text-sm whitespace-nowrap" style={{ border: '0.5px solid black', padding: '0px 3px' }}>Output Qty</td>
                         {block.sizes.map((s, i) => (
-                          <td key={i} className="text-center font-semibold text-black text-sm" style={{ border: '0.5px solid black', padding: '0px 2px' }}>{s.outputQty}</td>
+                          <td key={i} className="text-center font-semibold text-black text-sm" style={{ border: '0.5px solid black', padding: '0px 2px' }}>{s.outputQty > 0 ? s.outputQty.toLocaleString() : s.outputQty}</td>
                         ))}
-                        <td className="text-center font-bold text-black bg-gray-50 text-sm" style={{ border: '0.5px solid black', padding: '0px 3px' }}>{block.totals.totOutputQty}</td>
+                        <td className="text-center font-bold text-black bg-gray-50 text-sm" style={{ border: '0.5px solid black', padding: '0px 3px' }}>{block.totals.totOutputQty.toLocaleString()}</td>
                       </tr>
                       {/* Rejection */}
                       <tr>
                         <td className="font-semibold text-black text-sm whitespace-nowrap" style={{ border: '0.5px solid black', padding: '0px 3px' }}>Rejection</td>
                         {block.sizes.map((s, i) => (
-                          <td key={i} className={`text-center font-semibold text-black text-sm ${s.rejection > 0 ? 'bg-red-100' : ''}`} style={{ border: '0.5px solid black', padding: '0px 2px' }}>{s.rejection}</td>
+                          <td key={i} className="text-center font-semibold text-black text-sm" style={{ border: '0.5px solid black', padding: '0px 2px' }}>-</td>
                         ))}
                         <td className={`text-center font-bold text-black text-sm ${block.totals.totRejection > 0 ? 'bg-red-200' : 'bg-gray-50'}`} style={{ border: '0.5px solid black', padding: '0px 3px' }}>{block.totals.totRejection}</td>
                       </tr>
@@ -348,9 +348,9 @@ export default function SewingClosingPreviewPage() {
                       <tr>
                         <td className="font-bold text-black text-sm whitespace-nowrap" style={{ border: '0.5px solid black', padding: '0px 3px' }}>WIP</td>
                         {block.sizes.map((s, i) => (
-                          <td key={i} className={`text-center font-bold text-black text-sm ${s.wip > 0 ? 'bg-yellow-100' : ''}`} style={{ border: '0.5px solid black', padding: '0px 2px' }}>{s.wip}</td>
+                          <td key={i} className="text-center font-bold text-black text-sm" style={{ border: '0.5px solid black', padding: '0px 2px' }}>-</td>
                         ))}
-                        <td className={`text-center font-bold text-black text-sm ${block.totals.totWip > 0 ? 'bg-yellow-200' : 'bg-gray-100'}`} style={{ border: '0.5px solid black', padding: '0px 3px' }}>{block.totals.totWip}</td>
+                        <td className={`text-center font-bold text-black text-sm ${block.totals.totWip > 0 ? 'bg-yellow-200' : block.totals.totWip < 0 ? 'bg-green-200' : 'bg-gray-100'}`} style={{ border: '0.5px solid black', padding: '0px 3px' }}>{block.totals.totWip}</td>
                       </tr>
                     </tbody>
                   </table>

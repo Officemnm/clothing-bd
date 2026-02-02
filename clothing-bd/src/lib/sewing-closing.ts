@@ -3,15 +3,14 @@
  * 
  * Fetches sewing input and output report data from ERP
  * 
- * HTML Structure Analysis:
- * - Header table contains: Style, Buyer, Int. Ref., Item
- * - PO NO row: <td colspan="24"><strong> PO NO=</strong>... (NOT a color!)
- * - Color row: <td colspan="4" rowspan="3"><strong>COLOR NAME</strong></td>
- * - Size row: Size | 3A | 4A | ... | Total | 3A | 4A | ... | Total (sizes appear TWICE - for input & output)
- * - Color Qty row: Color Qty | values (twice for input & output) - this is ORDER QTY
- * - Color Total row: Contains Input Qty (first set) and Output Qty (second set)
+ * Based on Python script logic:
+ * - Parse color name from row containing "Size" and "Total"
+ * - Parse sizes from "Size" to "Total"
+ * - Color Qty row = Order Quantity
+ * - Color Total row = Input values + Output values + Rejection (last value)
+ * - WIP = (Input - Output) - Rejection
  * 
- * Key insight: First 7 size columns = Input data, Second 7 size columns = Output data
+ * Note: Size-wise rejection and wip show "-" (value = -1), only totals have actual values
  */
 
 import * as cheerio from 'cheerio';
@@ -22,8 +21,8 @@ interface SewingSizeData {
   orderQty: number;
   inputQty: number;
   outputQty: number;
-  rejection: number;
-  wip: number;
+  rejection: number;  // -1 means show "-"
+  wip: number;        // -1 means show "-"
 }
 
 interface SewingReportBlock {
@@ -57,6 +56,13 @@ async function getAuthenticatedSession(): Promise<string | null> {
 }
 
 /**
+ * Clean text by removing commas and trimming
+ */
+function cleanText(text: string): string {
+  return text.replace(/,/g, '').trim();
+}
+
+/**
  * Fetch sewing input/output report data from ERP
  */
 export async function fetchSewingClosingReportData(internalRefNo: string): Promise<SewingReportResult | null> {
@@ -66,81 +72,78 @@ export async function fetchSewingClosingReportData(internalRefNo: string): Promi
     return null;
   }
 
-  const reportUrl = process.env.ERP_SEWING_REPORT_URL;
-  if (!reportUrl) {
-    console.error('[Sewing Closing] ERP_SEWING_REPORT_URL not configured');
-    return null;
-  }
+  const reportUrl = 'http://180.92.235.190:8022/erp/production/reports/requires/sewing_input_and_output_report_controller.php';
 
+  // Try 2026 first, then 2025 (like Python script)
   const years = ['2026', '2025'];
-  const companyIds = ['0', '1', '2', '3', '4', '5'];
-  const woCompanyIds = ['0', '1', '2', '3', '4', '5'];
-  const locationIds = ['0', '1', '2', '3', '4', '5'];
 
   for (const year of years) {
-    for (const companyId of companyIds) {
-      for (const woCompanyId of woCompanyIds) {
-        for (const locationId of locationIds) {
-          try {
-            const formData = new URLSearchParams();
-            formData.append('action', 'generate_report');
-            formData.append('cbo_company_name', companyId);
-            formData.append('hidden_job_id', '');
-            formData.append('hidden_color_id', '');
-            formData.append('cbo_year', year);
-            formData.append('cbo_wo_company_name', woCompanyId);
-            formData.append('cbo_location_name', locationId);
-            formData.append('hidden_floor_id', '');
-            formData.append('hidden_line_id', '');
-            formData.append('txt_int_ref', internalRefNo);
-            formData.append('type', '1');
-            formData.append('report_title', 'Sewing Input and Output Report');
+    try {
+      console.log(`[Sewing Closing] Trying year ${year} for ${internalRefNo}...`);
+      
+      const formData = new URLSearchParams();
+      formData.append('action', 'generate_report');
+      formData.append('cbo_company_name', '0');
+      formData.append('cbo_year', year);
+      formData.append('cbo_wo_company_name', '2');
+      formData.append('txt_int_ref', internalRefNo);
+      formData.append('type', '1');
+      formData.append('report_title', '❏ Sewing Input and Output Report');
 
-        const response = await fetch(reportUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Cookie': cookies,
-          },
-          body: formData.toString(),
-        });
+      const response = await fetch(reportUrl, {
+        method: 'POST',
+        headers: {
+          'Host': '180.92.235.190:8022',
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36',
+          'Referer': 'http://180.92.235.190:8022/erp/production/reports/sewing_input_and_output_report.php?permission=1_1_1_1',
+          'Cookie': cookies,
+        },
+        body: formData.toString(),
+      });
 
-        if (response.ok) {
-          const text = await response.text();
-          if (text && text.length > 500 && !text.includes('No data found') && !text.includes('Data not Found') && !text.includes('Data not found')) {
-            const parsedData = parseSewingReportData(text, internalRefNo);
-            if (parsedData && parsedData.data.length > 0) {
-              console.log(`[Sewing Closing] Found data for year ${year}, company ${companyId}, woCompany ${woCompanyId}, location ${locationId}`);
-              return parsedData;
-            }
-          }
-        }
-          } catch (error) {
-            continue;
+      if (response.ok) {
+        const text = await response.text();
+        // Check if "Color Total" exists (like Python script)
+        if (text && text.includes('Color Total')) {
+          const parsedData = parseSewingSummary(text, internalRefNo);
+          if (parsedData && parsedData.data.length > 0) {
+            console.log(`[Sewing Closing] Found data for year ${year}`);
+            return parsedData;
           }
         }
       }
+    } catch (error) {
+      console.error(`[Sewing Closing] Error fetching year ${year}:`, error);
+      continue;
     }
   }
 
-  console.log('[Sewing Closing] No data found for any combination');
+  console.log('[Sewing Closing] No data found for any year');
   return null;
 }
 
 /**
  * Parse the HTML response from ERP into structured data
+ * Following Python script logic exactly
  */
-function parseSewingReportData(htmlContent: string, refNo: string): SewingReportResult | null {
+function parseSewingSummary(htmlContent: string, refNo: string): SewingReportResult | null {
   try {
     const $ = cheerio.load(htmlContent);
-    const reportBlocks: SewingReportBlock[] = [];
+    const tables = $('table');
     
+    if (tables.length === 0) {
+      return null;
+    }
+
+    const reportBlocks: SewingReportBlock[] = [];
+    const seenColors = new Set<string>();
+    
+    // Extract meta info from header
     let buyer = 'N/A';
     let style = 'N/A';
     let item = 'N/A';
 
-    // Extract meta info from header
     $('td').each((_, td) => {
       const text = $(td).text().trim().toLowerCase();
       const nextTd = $(td).next('td');
@@ -154,186 +157,208 @@ function parseSewingReportData(htmlContent: string, refNo: string): SewingReport
       }
     });
 
-    // Find all color blocks - look for td with colspan=4 and rowspan=3 containing strong tag
-    // But skip if it contains "PO NO"
-    $('td[colspan="4"][rowspan="3"]').each((_, colorCell) => {
-      const $colorCell = $(colorCell);
-      const colorText = $colorCell.find('strong').text().trim() || $colorCell.text().trim();
-      
-      // Skip if this is a PO NO row or empty or too short
-      if (!colorText || colorText.toLowerCase().includes('po no') || colorText.length < 3) {
-        return;
-      }
+    // State variables for parsing - each color block
+    let currentColor = '';
+    let currentSizes: string[] = [];
+    let currentOrderQty = 0;
+    let currentInputQty = 0;
+    let currentOutputQty = 0;
+    let currentRejection = 0;
+    let inputSizeBreakdown: number[] = [];
+    let outputSizeBreakdown: number[] = [];
+    let orderSizeBreakdown: number[] = [];
+    let hasColorTotal = false;
 
-      // Get the parent row
-      const $colorRow = $colorCell.closest('tr');
+    // Function to save color block
+    const saveColorBlock = () => {
+      if (!currentColor || currentSizes.length === 0 || !hasColorTotal) return;
       
-      // Collect rows for this color block - use ReturnType to avoid cheerio type issues
-      const rows: ReturnType<typeof $>[] = [];
-      let $currentRow = $colorRow;
+      // Check if already saved
+      if (reportBlocks.some(b => b.color === currentColor)) return;
       
-      for (let i = 0; i < 30 && $currentRow.length; i++) {
-        rows.push($currentRow);
-        $currentRow = $currentRow.next('tr');
+      const sizes: SewingSizeData[] = currentSizes.map((size, idx) => {
+        const orderQty = orderSizeBreakdown[idx] || 0;
+        const inputQty = inputSizeBreakdown[idx] || 0;
+        const outputQty = outputSizeBreakdown[idx] || 0;
         
-        // Check if current row is a Type A Color Total row
-        // Type A has "Color Total" as an actual cell value, not just in row text
-        const currentCells = $currentRow.find('td').toArray();
-        const hasColorTotalCell = currentCells.some(c => 
-          $(c).text().trim().toLowerCase() === 'color total'
-        );
-        
-        if (hasColorTotalCell) {
-          rows.push($currentRow);
-          break;
-        }
-        
-        // Stop if we hit another color block or PO NO
-        const hasNewColor = $currentRow.find('td[colspan="4"][rowspan="3"] strong').length > 0;
-        if (hasNewColor) break;
-        
-        // Also stop if row contains PO NO
-        if ($currentRow.text().toLowerCase().includes('po no=')) break;
-      }
+        return {
+          size,
+          orderQty,
+          inputQty,
+          outputQty,
+          rejection: -1,  // -1 means show "-" in UI
+          wip: -1,        // -1 means show "-" in UI
+        };
+      });
 
-      // Parse collected rows
-      let sizeHeaders: string[] = [];
-      let orderQtyValues: number[] = [];
-      let inputQtyValues: number[] = [];
-      let outputQtyValues: number[] = [];
-      let rejectionTotal = 0;
+      // WIP calculation: (Input - Output) - Rejection (like Python script)
+      const calculatedWip = (currentInputQty - currentOutputQty) - currentRejection;
 
-      for (const $row of rows) {
-        const rowText = $row.text();
-        const rowTextLower = rowText.toLowerCase();
-        const cells = $row.find('td, th').toArray();
-        const cellTexts = cells.map(c => $(c).text().trim());
+      const totals = {
+        totOrderQty: currentOrderQty,
+        totInputQty: currentInputQty,
+        totOutputQty: currentOutputQty,
+        totRejection: currentRejection,
+        totWip: calculatedWip,
+      };
+
+      console.log(`[Sewing Closing] Saving color: ${currentColor}, Order: ${currentOrderQty}, Input: ${currentInputQty}, Output: ${currentOutputQty}, Rejection: ${currentRejection}, WIP: ${calculatedWip}`);
+
+      reportBlocks.push({
+        color: currentColor,
+        sizes,
+        totals,
+      });
+    };
+
+    // Reset state for new color
+    const resetState = () => {
+      currentColor = '';
+      currentSizes = [];
+      currentOrderQty = 0;
+      currentInputQty = 0;
+      currentOutputQty = 0;
+      currentRejection = 0;
+      inputSizeBreakdown = [];
+      outputSizeBreakdown = [];
+      orderSizeBreakdown = [];
+      hasColorTotal = false;
+    };
+
+    tables.each((_, table) => {
+      const rows = $(table).find('tr');
+      
+      rows.each((_, row) => {
+        const cols = $(row).find('td');
+        const rowText = $(row).text().trim();
+        const colTexts = cols.map((__, c) => $(c).text().trim()).get();
         
-        // Size row - contains "Size" and values like 3A, 4A
-        if (rowTextLower.includes('size') && cellTexts.some(t => /^\d+a$/i.test(t))) {
-          // Find "Size" position and extract sizes until "Total"
-          const sizeIdx = cellTexts.findIndex(t => t.toLowerCase() === 'size');
-          if (sizeIdx >= 0) {
-            for (let i = sizeIdx + 1; i < cellTexts.length; i++) {
-              const val = cellTexts[i];
-              if (val.toLowerCase() === 'total') break;
-              if (val && val.length < 6 && /^[0-9]+[aA]?$/.test(val)) {
-                sizeHeaders.push(val);
+        // ১. কালার এবং সাইজ বের করা (Row containing "Size" and "Total")
+        if (rowText.includes('Size') && rowText.includes('Total')) {
+          try {
+            const sizeStartIndex = colTexts.findIndex(t => t === 'Size');
+            if (sizeStartIndex >= 0) {
+              // Find "Total" after "Size"
+              let totalIndex = -1;
+              for (let i = sizeStartIndex + 1; i < colTexts.length; i++) {
+                if (colTexts[i] === 'Total') {
+                  totalIndex = i;
+                  break;
+                }
+              }
+              
+              if (totalIndex > sizeStartIndex) {
+                // Extract color from text before "Size"
+                let rawColor = colTexts.slice(0, sizeStartIndex).join(' ').replace('Size', '').trim();
+                if (rawColor.includes('|')) {
+                  rawColor = rawColor.split('|')[0].trim();
+                }
+                
+                // Skip if empty or too short
+                if (!rawColor || rawColor.length < 2) return;
+                
+                // Check if color already seen (skip duplicates like Python script)
+                if (seenColors.has(rawColor)) {
+                  return;
+                }
+                
+                // Save previous color block before starting new one
+                saveColorBlock();
+                resetState();
+                
+                currentColor = rawColor;
+                seenColors.add(currentColor);
+                
+                // Extract sizes from between "Size" and "Total"
+                currentSizes = colTexts.slice(sizeStartIndex + 1, totalIndex).filter(s => s.trim() !== '');
+                
+                console.log(`[Sewing Closing] Found color: ${currentColor}, Sizes: ${currentSizes.join(', ')}`);
               }
             }
+          } catch {
+            return;
           }
-          continue;
         }
         
-        // Color Qty row - ORDER QTY (first numeric row)
-        if (rowTextLower.includes('color qty') && orderQtyValues.length === 0) {
-          // Find numeric cells and take first set (up to sizeHeaders.length)
-          const numCells = cells.filter(c => /^[\d,]+$/.test($(c).text().trim().replace(/,/g, '')));
-          const numSizes = sizeHeaders.length || 7;
-          orderQtyValues = numCells.slice(0, numSizes).map(c => 
-            parseInt($(c).text().trim().replace(/,/g, '')) || 0
-          );
-          continue;
-        }
+        // Skip if no current color
+        if (!currentColor || currentSizes.length === 0) return;
         
-        // Color Total row - contains both Input and Output totals
-        // Structure: [empty][empty][Color Total][Input1]...[Input7][InputTotal][Output1]...[Output7][OutputTotal][Rejection][empty]
-        // There are two types of Color Total rows:
-        // Type A (21 cells): Has "Color Total" text - ["","","Color Total", numbers...]
-        // Type B (19 cells): No "Color Total" text - [numbers only...]
-        // We want Type A which has the complete structure
-        if (rowTextLower.includes('color total')) {
-          // Check if this row has "Color Total" as a cell value (Type A)
-          const allCellTexts = cells.map(c => $(c).text().trim());
-          const hasColorTotalCell = allCellTexts.some(t => t.toLowerCase() === 'color total');
+        // ২. অর্ডার কোয়ান্টিটি (Color Qty)
+        if (rowText.includes('Color Qty')) {
+          const vals = colTexts.map(c => cleanText(c));
           
-          // Skip Type B rows (which don't have "Color Total" cell)
-          if (!hasColorTotalCell) {
-            continue;
-          }
-          
-          // Get all cell values as numbers, filter out non-numeric and empty
-          const allCellValues: number[] = [];
-          for (const c of cells) {
-            const t = $(c).text().trim().replace(/,/g, '');
-            // Must be numeric and not empty
-            if (t && /^\d+$/.test(t)) {
-              allCellValues.push(parseInt(t) || 0);
+          // সব সংখ্যা বের করি
+          const nums: number[] = [];
+          for (const v of vals) {
+            if (/^\d+$/.test(v)) {
+              nums.push(parseInt(v) || 0);
             }
           }
           
-          const numSizes = sizeHeaders.length || 7;
+          const numSizes = currentSizes.length;
           
-          // Analyze the structure to find correct indices
-          // Looking at raw cells: ['', '', 'Color Total', '0', '', '503', '1,033', ...]
-          // Numeric values: [0, 503, 1033, 1053, 1426, 1882, 1717, 1260, 8874, 499, 1029, 1050, ...]
-          // Structure: [ExtraZero][Input1..7][InputTotal][Output1..7][OutputTotal][ExtraZero/WIP][Rejection]
-          
-          // Skip the first 0 if present (it's an extra column before input)
-          let startIdx = 0;
-          if (allCellValues[0] === 0 && allCellValues.length > numSizes * 2 + 3) {
-            startIdx = 1; // Skip the leading 0
+          if (nums.length >= numSizes + 1) {
+            // প্রথম numSizes টি = per-size order qty
+            orderSizeBreakdown = nums.slice(0, numSizes);
+            // পরেরটি = total order qty
+            currentOrderQty = nums[numSizes];
+            
+            console.log(`[Sewing Closing] Color Qty for ${currentColor}: Total=${currentOrderQty}, PerSize=${orderSizeBreakdown.join(',')}`);
           }
+        }
+        
+        // ৩. মেইন ক্যালকুলেশন (Color Total)
+        if (rowText.includes('Color Total')) {
+          const vals = colTexts.map(c => cleanText(c));
           
-          // First numSizes values = Input Qty per size
-          inputQtyValues = allCellValues.slice(startIdx, startIdx + numSizes);
-          
-          // Skip input total (position startIdx + numSizes)
-          // Next numSizes values = Output Qty per size
-          const outputStartIdx = startIdx + numSizes + 1;
-          outputQtyValues = allCellValues.slice(outputStartIdx, outputStartIdx + numSizes);
-          
-          // Rejection is after output total and possible extra 0
-          // Look for the last meaningful value before empty/0 at the end
-          const afterOutputTotal = outputStartIdx + numSizes + 1;
-          if (allCellValues.length > afterOutputTotal) {
-            // Could be: [OutputTotal][0][Rejection] or [OutputTotal][Rejection]
-            const remaining = allCellValues.slice(afterOutputTotal);
-            // Rejection is typically the last non-zero value or the value after a 0
-            if (remaining.length >= 2 && remaining[0] === 0) {
-              rejectionTotal = remaining[1] || 0;
-            } else if (remaining.length >= 1) {
-              rejectionTotal = remaining[0] || 0;
+          // সংখ্যাগুলো বের করা (নেগেটিভ সহ)
+          const nums: number[] = [];
+          for (const v of vals) {
+            if (/^-?\d+$/.test(v)) {
+              nums.push(parseInt(v) || 0);
             }
           }
           
-          continue;
-        }
-      }
-
-      // Build size data if we have valid data
-      if (sizeHeaders.length > 0 && (orderQtyValues.length > 0 || inputQtyValues.length > 0)) {
-        const sizes: SewingSizeData[] = sizeHeaders.map((size, idx) => {
-          const orderQty = orderQtyValues[idx] || 0;
-          const inputQty = inputQtyValues[idx] || 0;
-          const outputQty = outputQtyValues[idx] || 0;
-          const wip = inputQty - outputQty;
+          const numSizes = currentSizes.length;
           
-          return {
-            size,
-            orderQty,
-            inputQty,
-            outputQty,
-            rejection: 0,
-            wip: wip > 0 ? wip : 0,
-          };
-        });
-
-        const totals = {
-          totOrderQty: sizes.reduce((sum, s) => sum + s.orderQty, 0),
-          totInputQty: sizes.reduce((sum, s) => sum + s.inputQty, 0),
-          totOutputQty: sizes.reduce((sum, s) => sum + s.outputQty, 0),
-          totRejection: rejectionTotal,
-          totWip: sizes.reduce((sum, s) => sum + s.wip, 0),
-        };
-
-        reportBlocks.push({
-          color: colorText,
-          sizes,
-          totals,
-        });
-      }
+          // লজিক (from Python): 
+          // Block 1 (Input): [Size Values...] [Total Input]
+          // Block 2 (Output): [Size Values...] [Total Output]
+          // End: [WIP] [Rejection] -> Rejection is LAST value
+          
+          // আমাদের দরকার অন্তত: (Size count * 2) + 2 (Totals)
+          const minLen = (numSizes * 2) + 2;
+          
+          if (nums.length >= minLen) {
+            // --- INPUT ---
+            inputSizeBreakdown = nums.slice(0, numSizes);
+            const inputTotal = nums[numSizes];
+            
+            // --- OUTPUT ---
+            const outputStartIdx = numSizes + 1;
+            outputSizeBreakdown = nums.slice(outputStartIdx, outputStartIdx + numSizes);
+            const outputTotal = nums[outputStartIdx + numSizes];
+            
+            // --- REJECTION ---
+            // শেষের সংখ্যাটি রিজেকশন (like Python script: nums[-1])
+            const rejectionQty = nums[nums.length - 1];
+            
+            currentInputQty = inputTotal;
+            currentOutputQty = outputTotal;
+            currentRejection = rejectionQty;
+            hasColorTotal = true;
+            
+            console.log(`[Sewing Closing] Color Total for ${currentColor}: Input=${inputTotal}, Output=${outputTotal}, Rejection=${rejectionQty}`);
+            
+            // Color Total পাওয়ার সাথে সাথে save করি
+            saveColorBlock();
+          }
+        }
+      });
     });
+
+    // Save any remaining color block
+    saveColorBlock();
 
     return {
       success: reportBlocks.length > 0,

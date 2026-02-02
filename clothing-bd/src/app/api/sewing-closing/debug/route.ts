@@ -11,50 +11,47 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No cookie' });
     }
 
-    const reportUrl = process.env.ERP_SEWING_REPORT_URL!;
-    const years = ['2026', '2025', '2024', '2023'];
-    const companyIds = ['0', '1', '2', '3', '4', '5'];
-    const woCompanyId = '2';
-    const locationId = '2';
+    // Use exact URL from Python script
+    const reportUrl = 'http://180.92.235.190:8022/erp/production/reports/requires/sewing_input_and_output_report_controller.php';
+    
+    // Try 2026 first, then 2025 (like Python script)
+    const years = ['2026', '2025'];
 
     for (const year of years) {
-      for (const companyId of companyIds) {
-        const formData = new URLSearchParams();
-        formData.append('action', 'generate_report');
-        formData.append('cbo_company_name', companyId);
-        formData.append('hidden_job_id', '');
-        formData.append('hidden_color_id', '');
-        formData.append('cbo_year', year);
-        formData.append('cbo_wo_company_name', woCompanyId);
-        formData.append('cbo_location_name', locationId);
-        formData.append('hidden_floor_id', '');
-        formData.append('hidden_line_id', '');
-        formData.append('txt_int_ref', refNo);
-        formData.append('type', '1');
-        formData.append('report_title', 'Sewing Input and Output Report');
+      // Use exact parameters from Python script
+      const formData = new URLSearchParams();
+      formData.append('action', 'generate_report');
+      formData.append('cbo_company_name', '0');
+      formData.append('cbo_year', year);
+      formData.append('cbo_wo_company_name', '2');
+      formData.append('txt_int_ref', refNo);
+      formData.append('type', '1');
+      formData.append('report_title', '❏ Sewing Input and Output Report');
 
-        const response = await fetch(reportUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Cookie': cookies,
-          },
-          body: formData.toString(),
+      const response = await fetch(reportUrl, {
+        method: 'POST',
+        headers: {
+          'Host': '180.92.235.190:8022',
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36',
+          'Referer': 'http://180.92.235.190:8022/erp/production/reports/sewing_input_and_output_report.php?permission=1_1_1_1',
+          'Cookie': cookies,
+        },
+        body: formData.toString(),
+      });
+
+      const text = await response.text();
+      
+      // Check for "Color Total" like Python script
+      if (text && text.includes('Color Total')) {
+        console.log(`[Debug] Found data for year=${year}`);
+        return new NextResponse(text, {
+          headers: { 'Content-Type': 'text/html; charset=utf-8' }
         });
-
-        const text = await response.text();
-        
-        if (text && text.length > 500 && !text.includes('Data not found') && !text.includes('Data not Found')) {
-          console.log(`[Debug] Found data for year=${year}, company=${companyId}`);
-          return new NextResponse(text, {
-            headers: { 'Content-Type': 'text/html' }
-          });
-        }
       }
     }
     
-    return new NextResponse('Data not found for any combination', {
+    return new NextResponse('Data not found for 2026 or 2025', {
       headers: { 'Content-Type': 'text/plain' }
     });
   } catch (error) {
