@@ -22,10 +22,11 @@ export default function DailyLineWiseInputReportPage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [lineFilter, setLineFilter] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingType, setLoadingType] = useState<'v1' | 'v2' | null>(null);
   const [error, setError] = useState('');
   const router = useRouter();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, version: 'v1' | 'v2' = 'v1') => {
     e.preventDefault();
     if (!selectedDate) {
       setError('Please select a date');
@@ -33,6 +34,7 @@ export default function DailyLineWiseInputReportPage() {
     }
 
     setIsLoading(true);
+    setLoadingType(version);
     setError('');
 
     try {
@@ -48,7 +50,11 @@ export default function DailyLineWiseInputReportPage() {
 
       if (data.success) {
         sessionStorage.setItem('hourlyReportData', JSON.stringify(data));
-        router.push('/hourly-preview');
+        if (version === 'v2') {
+          router.push('/hourly-preview-v2');
+        } else {
+          router.push('/hourly-preview');
+        }
       } else {
         setError(data.message || 'Failed to fetch data. Please check the date format.');
       }
@@ -56,6 +62,7 @@ export default function DailyLineWiseInputReportPage() {
       setError('Connection error. Please try again.');
     } finally {
       setIsLoading(false);
+      setLoadingType(null);
     }
   };
 
@@ -178,7 +185,23 @@ export default function DailyLineWiseInputReportPage() {
             }`}
           >
             <MagnifyingGlassIcon className="w-5 h-5" />
-            Generate Report
+            {loadingType === 'v1' ? 'Generating...' : 'Generate Report'}
+          </motion.button>
+
+          <motion.button
+            type="button"
+            onClick={(e) => handleSubmit(e, 'v2')}
+            disabled={isLoading || !selectedDate}
+            whileHover={!isLoading && selectedDate ? { scale: 1.01 } : {}}
+            whileTap={!isLoading && selectedDate ? { scale: 0.99 } : {}}
+            className={`w-full h-12 mt-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all ${
+              isLoading || !selectedDate
+                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                : 'bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:shadow-lg hover:shadow-emerald-200'
+            }`}
+          >
+            <TableCellsIcon className="w-5 h-5" />
+            {loadingType === 'v2' ? 'Generating...' : 'Report v2 (Simple)'}
           </motion.button>
         </form>
       </motion.div>
