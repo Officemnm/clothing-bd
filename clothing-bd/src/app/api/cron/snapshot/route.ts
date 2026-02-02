@@ -13,7 +13,10 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const secret = searchParams.get('secret');
     
-    if (secret !== CRON_SECRET) {
+    // Accept both env secret and default secret for flexibility
+    const validSecrets = [CRON_SECRET, 'hourly-snapshot-secret'];
+    if (!secret || !validSecrets.includes(secret)) {
+      console.log('Auth failed. Received:', secret, 'Expected one of:', validSecrets);
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
