@@ -2,24 +2,81 @@ import * as cheerio from 'cheerio';
 import { getValidERPCookie } from './erp-cookie';
 
 // ============ Types ============
+export interface TimeSlotData {
+  slot1: number; // 8:00 AM - 12:45 PM
+  slot2: number; // 12:45 PM - 5:00 PM
+  slot3: number; // 5:00 PM - 9:00 PM
+  total: number;
+}
+
 export interface LineData {
   lineNo: string;
-  input: number;
+  buyer: string;
+  timeSlots: TimeSlotData;
 }
 
 export interface FloorData {
   floorName: string;
   lines: LineData[];
-  subtotal: number;
+  subtotal: TimeSlotData;
+}
+
+export interface BuyerSummary {
+  buyerName: string;
+  totalInput: number;
 }
 
 export interface HourlyReportResult {
   success: boolean;
   date: string;
   floors: FloorData[];
-  grandTotal: number;
+  buyerSummary: BuyerSummary[];
+  grandTotal: TimeSlotData;
   targetLine?: string;
   message?: string;
+  currentSlot?: string;
+}
+
+// Raw data types for snapshot
+export interface RawLineData {
+  lineNo: string;
+  buyer: string;
+  totalInput: number;
+}
+
+export interface RawFloorData {
+  floorName: string;
+  lines: RawLineData[];
+  subtotal: number;
+}
+
+export interface RawReportResult {
+  success: boolean;
+  date: string;
+  floors: RawFloorData[];
+  grandTotal: number;
+  message?: string;
+}
+
+// Snapshot types
+export interface LineSnapshot {
+  lineNo: string;
+  buyer: string;
+  totalInput: number;
+}
+
+export interface FloorSnapshot {
+  floorName: string;
+  lines: LineSnapshot[];
+  subtotal: number;
+}
+
+export interface HourlySnapshot {
+  date: string;
+  slot: 'slot1' | 'slot2' | 'slot3';
+  capturedAt: Date;
+  floors: FloorSnapshot[];
+  grandTotal: number;
 }
 
 // ============ Configuration ============
@@ -27,8 +84,6 @@ const ERP_HOURLY_REPORT_URL = 'http://180.92.235.190:8022/erp/production/reports
 
 /**
  * Format date string for ERP API
- * Input: "28-Jan-2026" or similar
- * Output: "'28-Jan-2026'"
  */
 function formatDateForERP(dateInput: string): string {
   const cleanDate = dateInput.replace(/['"]/g, '').trim();
@@ -36,12 +91,20 @@ function formatDateForERP(dateInput: string): string {
 }
 
 /**
- * Parse the HTML response and extract line-wise input data
+ * Create empty time slot data
  */
-function parseHourlyReportHTML(htmlContent: string, targetLine?: string): HourlyReportResult {
+function createEmptyTimeSlots(): TimeSlotData {
+  return { slot1: 0, slot2: 0, slot3: 0, total: 0 };
+}
+
+/**
+ * Parse the HTML response and extract RAW total input data per line
+ * This returns current cumulative totals without time slot breakdown
+ */
+function parseRawInputHTML(htmlContent: string): RawReportResult {
   const $ = cheerio.load(htmlContent);
   
-  const floors: FloorData[] = [];
+  const floors: RawFloorData[] = [];
   let grandTotal = 0;
   
   const tableBody = $('#table_body');
@@ -51,14 +114,14 @@ function parseHourlyReportHTML(htmlContent: string, targetLine?: string): Hourly
       date: '',
       floors: [],
       grandTotal: 0,
-      message: 'ডাটা টেবিল পাওয়া যায়নি!'
+      message: 'Data table not found'
     };
   }
 
   const rows = tableBody.find('tr');
   
   let currentFloorName = '';
-  let currentFloorLines: LineData[] = [];
+  let currentFloorLines: RawLineData[] = [];
   let currentFloorSubtotal = 0;
   let foundAnyData = false;
 
@@ -81,44 +144,43 @@ function parseHourlyReportHTML(htmlContent: string, targetLine?: string): Hourly
       currentFloorName = text.replace('Floor Name:', '').trim();
       currentFloorLines = [];
       currentFloorSubtotal = 0;
-      return; // continue
+      return;
     }
 
     // 2. Skip header rows
     if (text.includes('Company Name') || text.includes('Line No')) {
-      return; // continue
+      return;
     }
 
     // 3. Process line data
-    if (cols.length > 15) {
+    if (cols.length > 10) {
       const lineNo = $(cols[0]).text().trim();
       
-      // Skip empty lines (subtotal rows)
+      // Skip empty lines
       if (!lineNo) {
-        return; // continue
+        return;
       }
 
-      // Filter by target line if specified
-      if (targetLine && targetLine.toLowerCase() !== lineNo.toLowerCase()) {
-        return; // continue
-      }
+      // Extract buyer name (column index 1)
+      const buyerName = $(cols[1]).text().trim() || 'Unknown';
 
-      // Extract input value (5th column from end)
-      let inputValue = 0;
+      // Get total input (5th column from end)
+      let totalInput = 0;
       try {
         const inputStr = $(cols[cols.length - 5]).text().trim();
-        inputValue = parseInt(inputStr) || 0;
+        totalInput = parseInt(inputStr) || 0;
       } catch {
-        inputValue = 0;
+        totalInput = 0;
       }
 
       currentFloorLines.push({
         lineNo,
-        input: inputValue
+        buyer: buyerName,
+        totalInput
       });
       
-      currentFloorSubtotal += inputValue;
-      grandTotal += inputValue;
+      currentFloorSubtotal += totalInput;
+      grandTotal += totalInput;
       foundAnyData = true;
     }
   });
@@ -138,10 +200,7 @@ function parseHourlyReportHTML(htmlContent: string, targetLine?: string): Hourly
       date: '',
       floors: [],
       grandTotal: 0,
-      targetLine,
-      message: targetLine 
-        ? `'${targetLine}' লাইনটি খুঁজে পাওয়া যায়নি বা ইনপুট নেই।`
-        : 'কোনো ডাটা পাওয়া যায়নি।'
+      message: 'No data found for this date.'
     };
   }
 
@@ -149,18 +208,15 @@ function parseHourlyReportHTML(htmlContent: string, targetLine?: string): Hourly
     success: true,
     date: '',
     floors,
-    grandTotal,
-    targetLine
+    grandTotal
   };
 }
 
 /**
- * Fetch hourly production monitoring report from ERP
+ * Fetch raw input data from ERP (total input without time slots)
+ * This is used for snapshot capture and real-time report generation
  */
-export async function fetchHourlyReport(
-  inputDate: string,
-  targetLine?: string
-): Promise<HourlyReportResult> {
+export async function fetchRawInputData(inputDate: string): Promise<RawReportResult> {
   // Get authenticated cookie
   const cookies = await getValidERPCookie();
   if (!cookies) {
@@ -169,7 +225,7 @@ export async function fetchHourlyReport(
       date: inputDate,
       floors: [],
       grandTotal: 0,
-      message: 'ERP লগইন ব্যর্থ হয়েছে।'
+      message: 'ERP authentication failed. Please try again.'
     };
   }
 
@@ -212,7 +268,7 @@ export async function fetchHourlyReport(
         date: inputDate,
         floors: [],
         grandTotal: 0,
-        message: `সার্ভার এরর: ${response.status}`
+        message: `Server error: ${response.status}`
       };
     }
 
@@ -225,25 +281,263 @@ export async function fetchHourlyReport(
         date: inputDate,
         floors: [],
         grandTotal: 0,
-        message: 'এই তারিখে কোনো লাইন এনগেজড নেই।'
+        message: 'No lines engaged on this date.'
       };
     }
 
-    const result = parseHourlyReportHTML(htmlContent, targetLine);
+    const result = parseRawInputHTML(htmlContent);
     result.date = inputDate;
     
     return result;
 
   } catch (error) {
-    console.error('Hourly report fetch error:', error);
+    console.error('Raw data fetch error:', error);
     return {
       success: false,
       date: inputDate,
       floors: [],
       grandTotal: 0,
-      message: `ডাটা আনতে সমস্যা হয়েছে: ${error instanceof Error ? error.message : 'Unknown error'}`
+      message: `Failed to fetch data: ${error instanceof Error ? error.message : 'Unknown error'}`
     };
   }
+}
+
+/**
+ * Get current time slot based on Bangladesh time
+ */
+export function getCurrentTimeSlot(): 'slot1' | 'slot2' | 'slot3' | 'before_slot1' | 'after_slot3' {
+  const now = new Date();
+  // Convert to Bangladesh time (UTC+6)
+  const bdTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Dhaka' }));
+  const hours = bdTime.getHours();
+  const minutes = bdTime.getMinutes();
+  const currentMinutes = hours * 60 + minutes;
+
+  // 8:00 AM = 480 minutes
+  // 12:45 PM = 765 minutes
+  // 5:00 PM = 1020 minutes
+  // 9:00 PM = 1260 minutes
+
+  if (currentMinutes < 480) {
+    return 'before_slot1'; // Before 8 AM
+  } else if (currentMinutes < 765) {
+    return 'slot1'; // 8:00 AM - 12:45 PM
+  } else if (currentMinutes < 1020) {
+    return 'slot2'; // 12:45 PM - 5:00 PM
+  } else if (currentMinutes < 1260) {
+    return 'slot3'; // 5:00 PM - 9:00 PM
+  } else {
+    return 'after_slot3'; // After 9 PM
+  }
+}
+
+/**
+ * Calculate slot value based on current raw data and previous snapshot
+ */
+function calculateSlotValue(currentValue: number, previousSnapshot: number): number {
+  const diff = currentValue - previousSnapshot;
+  return diff > 0 ? diff : 0;
+}
+
+/**
+ * Get line input from snapshot
+ */
+function getLineInputFromSnapshot(
+  snapshot: HourlySnapshot | null, 
+  floorName: string, 
+  lineNo: string
+): number {
+  if (!snapshot) return 0;
+  const floor = snapshot.floors.find(f => f.floorName === floorName);
+  if (!floor) return 0;
+  const line = floor.lines.find(l => l.lineNo === lineNo);
+  return line ? line.totalInput : 0;
+}
+
+/**
+ * Generate hourly report using saved snapshots and current data
+ * This is the main function for displaying the report
+ */
+export async function fetchHourlyReport(
+  inputDate: string,
+  targetLine?: string,
+  snapshots?: {
+    slot1: HourlySnapshot | null;
+    slot2: HourlySnapshot | null;
+    slot3: HourlySnapshot | null;
+  }
+): Promise<HourlyReportResult> {
+  const currentSlot = getCurrentTimeSlot();
+  
+  // Fetch current raw data from ERP
+  const rawData = await fetchRawInputData(inputDate);
+  
+  if (!rawData.success) {
+    return {
+      success: false,
+      date: inputDate,
+      floors: [],
+      buyerSummary: [],
+      grandTotal: createEmptyTimeSlots(),
+      message: rawData.message,
+      currentSlot
+    };
+  }
+
+  // Default empty snapshots if not provided
+  const snapshotData = snapshots || { slot1: null, slot2: null, slot3: null };
+
+  const floors: FloorData[] = [];
+  let grandTotal = createEmptyTimeSlots();
+  const buyerMap = new Map<string, number>();
+
+  for (const rawFloor of rawData.floors) {
+    const lines: LineData[] = [];
+    let floorSubtotal = createEmptyTimeSlots();
+
+    for (const rawLine of rawFloor.lines) {
+      // Filter by target line if specified
+      if (targetLine && targetLine.toLowerCase() !== rawLine.lineNo.toLowerCase()) {
+        continue;
+      }
+
+      const currentTotal = rawLine.totalInput;
+      const slot1Snapshot = getLineInputFromSnapshot(snapshotData.slot1, rawFloor.floorName, rawLine.lineNo);
+      const slot2Snapshot = getLineInputFromSnapshot(snapshotData.slot2, rawFloor.floorName, rawLine.lineNo);
+      const slot3Snapshot = getLineInputFromSnapshot(snapshotData.slot3, rawFloor.floorName, rawLine.lineNo);
+
+      let slot1 = 0, slot2 = 0, slot3 = 0;
+
+      // Calculate slot values based on current time and available snapshots
+      if (currentSlot === 'before_slot1') {
+        // Before 8 AM - no data yet
+        slot1 = 0;
+        slot2 = 0;
+        slot3 = 0;
+      } else if (currentSlot === 'slot1') {
+        // During 8 AM - 12:45 PM
+        // Show current cumulative as slot1 (in progress)
+        slot1 = currentTotal;
+        slot2 = 0;
+        slot3 = 0;
+      } else if (currentSlot === 'slot2') {
+        // During 12:45 PM - 5:00 PM
+        if (snapshotData.slot1) {
+          // Use saved slot1 data
+          slot1 = slot1Snapshot;
+          // Calculate slot2 as current - slot1
+          slot2 = calculateSlotValue(currentTotal, slot1Snapshot);
+        } else {
+          // No slot1 snapshot, show all in slot1
+          slot1 = currentTotal;
+          slot2 = 0;
+        }
+        slot3 = 0;
+      } else if (currentSlot === 'slot3') {
+        // During 5:00 PM - 9:00 PM
+        if (snapshotData.slot1) {
+          slot1 = slot1Snapshot;
+        }
+        if (snapshotData.slot2) {
+          slot2 = calculateSlotValue(slot2Snapshot, slot1Snapshot);
+          // Calculate slot3 as current - slot2
+          slot3 = calculateSlotValue(currentTotal, slot2Snapshot);
+        } else if (snapshotData.slot1) {
+          // Only slot1 available
+          slot2 = calculateSlotValue(currentTotal, slot1Snapshot);
+          slot3 = 0;
+        } else {
+          slot1 = currentTotal;
+          slot2 = 0;
+          slot3 = 0;
+        }
+      } else {
+        // After 9 PM - use all saved snapshots
+        if (snapshotData.slot3) {
+          slot1 = slot1Snapshot;
+          slot2 = calculateSlotValue(slot2Snapshot, slot1Snapshot);
+          slot3 = calculateSlotValue(slot3Snapshot, slot2Snapshot);
+        } else if (snapshotData.slot2) {
+          slot1 = slot1Snapshot;
+          slot2 = calculateSlotValue(slot2Snapshot, slot1Snapshot);
+          slot3 = calculateSlotValue(currentTotal, slot2Snapshot);
+        } else if (snapshotData.slot1) {
+          slot1 = slot1Snapshot;
+          slot2 = calculateSlotValue(currentTotal, slot1Snapshot);
+          slot3 = 0;
+        } else {
+          slot1 = currentTotal;
+          slot2 = 0;
+          slot3 = 0;
+        }
+      }
+
+      const timeSlots: TimeSlotData = {
+        slot1,
+        slot2,
+        slot3,
+        total: currentTotal
+      };
+
+      lines.push({
+        lineNo: rawLine.lineNo,
+        buyer: rawLine.buyer,
+        timeSlots
+      });
+
+      floorSubtotal.slot1 += slot1;
+      floorSubtotal.slot2 += slot2;
+      floorSubtotal.slot3 += slot3;
+      floorSubtotal.total += currentTotal;
+
+      // Update buyer summary
+      const currentBuyerTotal = buyerMap.get(rawLine.buyer) || 0;
+      buyerMap.set(rawLine.buyer, currentBuyerTotal + currentTotal);
+    }
+
+    if (lines.length > 0) {
+      floors.push({
+        floorName: rawFloor.floorName,
+        lines,
+        subtotal: floorSubtotal
+      });
+
+      grandTotal.slot1 += floorSubtotal.slot1;
+      grandTotal.slot2 += floorSubtotal.slot2;
+      grandTotal.slot3 += floorSubtotal.slot3;
+      grandTotal.total += floorSubtotal.total;
+    }
+  }
+
+  // Convert buyer map to array
+  const buyerSummary: BuyerSummary[] = Array.from(buyerMap.entries())
+    .map(([buyerName, totalInput]) => ({ buyerName, totalInput }))
+    .sort((a, b) => b.totalInput - a.totalInput);
+
+  if (floors.length === 0) {
+    return {
+      success: false,
+      date: inputDate,
+      floors: [],
+      buyerSummary: [],
+      grandTotal: createEmptyTimeSlots(),
+      targetLine,
+      message: targetLine 
+        ? `Line '${targetLine}' not found or has no input data.`
+        : 'No data found for this date.',
+      currentSlot
+    };
+  }
+
+  return {
+    success: true,
+    date: inputDate,
+    floors,
+    buyerSummary,
+    grandTotal,
+    targetLine,
+    currentSlot
+  };
 }
 
 /**
@@ -255,5 +549,18 @@ export function getTodayDateFormatted(): string {
   const day = String(today.getDate()).padStart(2, '0');
   const month = months[today.getMonth()];
   const year = today.getFullYear();
+  return `${day}-${month}-${year}`;
+}
+
+/**
+ * Get today's date in DD-MMM-YYYY format using Bangladesh timezone
+ */
+export function getTodayDateBD(): string {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const now = new Date();
+  const bdTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Dhaka' }));
+  const day = String(bdTime.getDate()).padStart(2, '0');
+  const month = months[bdTime.getMonth()];
+  const year = bdTime.getFullYear();
   return `${day}-${month}-${year}`;
 }
