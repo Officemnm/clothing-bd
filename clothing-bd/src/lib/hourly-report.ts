@@ -423,27 +423,26 @@ export async function fetchHourlyReport(
       } else if (currentSlot === 'slot2') {
         // During 12:45 PM - 5:00 PM
         if (snapshotData.slot1) {
-          // Use saved slot1 data
+          // Slot1 finished - use ONLY saved slot1 data (not current ERP)
           slot1 = slot1Snapshot;
-          // Calculate slot2 as current - slot1
+          // Calculate slot2 as current - slot1 snapshot
           slot2 = calculateSlotValue(currentTotal, slot1Snapshot);
         } else {
-          // No slot1 snapshot, show all in slot1
+          // No slot1 snapshot available - show current as slot1
           slot1 = currentTotal;
           slot2 = 0;
         }
         slot3 = 0;
       } else if (currentSlot === 'slot3') {
         // During 5:00 PM - 9:00 PM
-        if (snapshotData.slot1) {
-          slot1 = slot1Snapshot;
-        }
         if (snapshotData.slot2) {
+          // Both slot1 and slot2 finished
+          slot1 = slot1Snapshot;
           slot2 = calculateSlotValue(slot2Snapshot, slot1Snapshot);
-          // Calculate slot3 as current - slot2
           slot3 = calculateSlotValue(currentTotal, slot2Snapshot);
         } else if (snapshotData.slot1) {
-          // Only slot1 available
+          // Only slot1 finished
+          slot1 = slot1Snapshot;
           slot2 = calculateSlotValue(currentTotal, slot1Snapshot);
           slot3 = 0;
         } else {
@@ -476,7 +475,7 @@ export async function fetchHourlyReport(
         slot1,
         slot2,
         slot3,
-        total: currentTotal
+        total: slot1 + slot2 + slot3  // Use calculated slots sum, not raw ERP data
       };
 
       lines.push({
@@ -488,11 +487,12 @@ export async function fetchHourlyReport(
       floorSubtotal.slot1 += slot1;
       floorSubtotal.slot2 += slot2;
       floorSubtotal.slot3 += slot3;
-      floorSubtotal.total += currentTotal;
+      floorSubtotal.total += (slot1 + slot2 + slot3);  // Use calculated sum
 
-      // Update buyer summary
+      // Update buyer summary - use calculated total
+      const lineTotal = slot1 + slot2 + slot3;
       const currentBuyerTotal = buyerMap.get(rawLine.buyer) || 0;
-      buyerMap.set(rawLine.buyer, currentBuyerTotal + currentTotal);
+      buyerMap.set(rawLine.buyer, currentBuyerTotal + lineTotal);
     }
 
     if (lines.length > 0) {
