@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      params: { month, year, day },
+      params: { date },
       htmlLength: html.length,
       tablesFound: tables.length,
       tables: tables.slice(0, 5) // First 5 tables only
