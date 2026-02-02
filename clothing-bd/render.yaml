@@ -1,62 +1,40 @@
+# Clothing BD - Production Report System
+# Render Blueprint Configuration
+
 services:
-  # Main web service
+  # Main Next.js Web Application
   - type: web
     name: clothing-bd
     runtime: node
+    region: singapore  # Closest to Bangladesh
+    plan: free
+    branch: main
+    repo: https://github.com/Officemnm/clothing-bd
+    rootDir: clothing-bd
     buildCommand: npm install && npm run build
     startCommand: npm start
+    healthCheckPath: /
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: 22
       - key: MONGODB_URI
-        sync: false
+        value: mongodb+srv://Mehedi:Mehedi123@office.jxdnuaj.mongodb.net/office_db
       - key: CRON_SECRET
-        sync: false
+        value: hourly-snapshot-secret
 
-  # Cron job for 12:45 PM Bangladesh Time (6:45 AM UTC)
-  - type: cron
-    name: hourly-snapshot-slot1
-    runtime: node
-    schedule: "45 6 * * *"
-    buildCommand: echo "Cron job - no build needed"
-    startCommand: curl -s "$RENDER_EXTERNAL_URL/api/cron/snapshot?secret=$CRON_SECRET&slot=slot1"
-    envVars:
-      - key: RENDER_EXTERNAL_URL
-        fromService:
-          type: web
-          name: clothing-bd
-          property: url
-      - key: CRON_SECRET
-        sync: false
-
-  # Cron job for 5:00 PM Bangladesh Time (11:00 AM UTC)
-  - type: cron
-    name: hourly-snapshot-slot2
-    runtime: node
-    schedule: "0 11 * * *"
-    buildCommand: echo "Cron job - no build needed"
-    startCommand: curl -s "$RENDER_EXTERNAL_URL/api/cron/snapshot?secret=$CRON_SECRET&slot=slot2"
-    envVars:
-      - key: RENDER_EXTERNAL_URL
-        fromService:
-          type: web
-          name: clothing-bd
-          property: url
-      - key: CRON_SECRET
-        sync: false
-
-  # Cron job for 9:00 PM Bangladesh Time (3:00 PM UTC)
-  - type: cron
-    name: hourly-snapshot-slot3
-    runtime: node
-    schedule: "0 15 * * *"
-    buildCommand: echo "Cron job - no build needed"
-    startCommand: curl -s "$RENDER_EXTERNAL_URL/api/cron/snapshot?secret=$CRON_SECRET&slot=slot3"
-    envVars:
-      - key: RENDER_EXTERNAL_URL
-        fromService:
-          type: web
-          name: clothing-bd
-          property: url
-      - key: CRON_SECRET
-        sync: false
+# Note: Render Free Plan does not support Cron Jobs
+# Use external cron service like cron-job.org with these URLs:
+#
+# Slot 1 (12:45 PM BD = 6:45 AM UTC):
+#   Schedule: 45 6 * * *
+#   URL: https://clothing-bd.onrender.com/api/cron/snapshot?secret=hourly-snapshot-secret&slot=slot1
+#
+# Slot 2 (5:00 PM BD = 11:00 AM UTC):
+#   Schedule: 0 11 * * *
+#   URL: https://clothing-bd.onrender.com/api/cron/snapshot?secret=hourly-snapshot-secret&slot=slot2
+#
+# Slot 3 (9:00 PM BD = 3:00 PM UTC):
+#   Schedule: 0 15 * * *
+#   URL: https://clothing-bd.onrender.com/api/cron/snapshot?secret=hourly-snapshot-secret&slot=slot3
