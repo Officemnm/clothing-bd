@@ -1,0 +1,62 @@
+services:
+  # Main web service
+  - type: web
+    name: clothing-bd
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+
+  # Cron job for 12:45 PM Bangladesh Time (6:45 AM UTC)
+  - type: cron
+    name: hourly-snapshot-slot1
+    runtime: node
+    schedule: "45 6 * * *"
+    buildCommand: echo "Cron job - no build needed"
+    startCommand: curl -s "$RENDER_EXTERNAL_URL/api/cron/snapshot?secret=$CRON_SECRET&slot=slot1"
+    envVars:
+      - key: RENDER_EXTERNAL_URL
+        fromService:
+          type: web
+          name: clothing-bd
+          property: url
+      - key: CRON_SECRET
+        sync: false
+
+  # Cron job for 5:00 PM Bangladesh Time (11:00 AM UTC)
+  - type: cron
+    name: hourly-snapshot-slot2
+    runtime: node
+    schedule: "0 11 * * *"
+    buildCommand: echo "Cron job - no build needed"
+    startCommand: curl -s "$RENDER_EXTERNAL_URL/api/cron/snapshot?secret=$CRON_SECRET&slot=slot2"
+    envVars:
+      - key: RENDER_EXTERNAL_URL
+        fromService:
+          type: web
+          name: clothing-bd
+          property: url
+      - key: CRON_SECRET
+        sync: false
+
+  # Cron job for 9:00 PM Bangladesh Time (3:00 PM UTC)
+  - type: cron
+    name: hourly-snapshot-slot3
+    runtime: node
+    schedule: "0 15 * * *"
+    buildCommand: echo "Cron job - no build needed"
+    startCommand: curl -s "$RENDER_EXTERNAL_URL/api/cron/snapshot?secret=$CRON_SECRET&slot=slot3"
+    envVars:
+      - key: RENDER_EXTERNAL_URL
+        fromService:
+          type: web
+          name: clothing-bd
+          property: url
+      - key: CRON_SECRET
+        sync: false

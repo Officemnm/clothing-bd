@@ -30,17 +30,14 @@ interface BuyerSummary {
   totalInput: number;
 }
 
-interface BuyerInputSummary {
+interface FactoryBuyerSummary {
   buyerName: string;
   sewingInput: number;
 }
 
 interface FactorySummary {
-  buyerSummary: BuyerInputSummary[];
+  buyerSummary: FactoryBuyerSummary[];
   totalSewingInput: number;
-  totalSewingOutput: number;
-  totalFinishing: number;
-  totalShipment: number;
 }
 
 interface ReportData {
@@ -290,64 +287,52 @@ export default function HourlyPreviewPage() {
               </p>
             </div>
 
-            {/* Top Summary Section */}
-            <div className="mx-3 my-3 grid grid-cols-2 gap-3">
+            {/* Top Summary Section - Vertical Layout with Reduced Gaps */}
+            <div className="mx-3 my-2 grid grid-cols-2 gap-4 border-b border-black pb-2">
               {/* Left: Slot-wise Production Summary */}
-              <div className="rounded-lg overflow-hidden" style={{ background: 'linear-gradient(135deg, #065f46 0%, #047857 50%, #059669 100%)', boxShadow: '0 4px 15px rgba(5, 150, 105, 0.2)' }}>
-                <div className="px-3 py-2 border-b border-white/20">
-                  <h3 className="text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2">
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                      <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Hourly Production
-                  </h3>
-                </div>
-                <div className="p-2 space-y-1">
-                  <div className="flex justify-between items-center px-2 py-1 rounded bg-white/10">
-                    <span className="text-white/90 text-xs">8AM - 12:45PM</span>
-                    <span className="text-white font-bold text-sm">{reportData.grandTotal.slot1.toLocaleString()}</span>
+              <div>
+                <h3 className="text-xs font-bold text-black uppercase mb-1 border-b border-black pb-0.5">Hourly Production</h3>
+                <div className="space-y-0">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-black">8AM - 12:45PM</span>
+                    <span className="text-black font-bold">{reportData.grandTotal.slot1.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between items-center px-2 py-1 rounded bg-white/10">
-                    <span className="text-white/90 text-xs">12:45PM - 5PM</span>
-                    <span className="text-white font-bold text-sm">{reportData.grandTotal.slot2.toLocaleString()}</span>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-black">12:45PM - 5PM</span>
+                    <span className="text-black font-bold">{reportData.grandTotal.slot2.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between items-center px-2 py-1 rounded bg-white/10">
-                    <span className="text-white/90 text-xs">5PM - 9PM</span>
-                    <span className="text-white font-bold text-sm">{reportData.grandTotal.slot3.toLocaleString()}</span>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-black">5PM - 9PM</span>
+                    <span className="text-black font-bold">{reportData.grandTotal.slot3.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between items-center px-2 py-1.5 rounded bg-white/25 mt-1">
-                    <span className="text-white font-semibold text-xs">GRAND TOTAL</span>
-                    <span className="text-white font-black text-base">{reportData.grandTotal.total.toLocaleString()}</span>
+                  <div className="flex justify-between text-xs border-t border-black mt-0.5 pt-0.5">
+                    <span className="text-black font-bold">TOTAL</span>
+                    <span className="text-black font-bold">{reportData.grandTotal.total.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
 
               {/* Right: Buyer-wise Sewing Input */}
-              <div className="rounded-lg overflow-hidden" style={{ background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%)', boxShadow: '0 4px 15px rgba(59, 130, 246, 0.2)' }}>
-                <div className="px-3 py-2 border-b border-white/20">
-                  <h3 className="text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2">
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                      <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    Buyer Wise Input
-                  </h3>
-                </div>
-                <div className="p-2 space-y-1">
+              <div>
+                <h3 className="text-xs font-bold text-black uppercase mb-1 border-b border-black pb-0.5">Buyer Wise Input</h3>
+                <div className="space-y-0">
                   {reportData.factorySummary && reportData.factorySummary.buyerSummary.length > 0 ? (
                     <>
-                      {reportData.factorySummary.buyerSummary.slice(0, 5).map((buyer, idx) => (
-                        <div key={idx} className="flex justify-between items-center px-2 py-1 rounded bg-white/10">
-                          <span className="text-white/90 text-xs truncate max-w-[120px]">{buyer.buyerName}</span>
-                          <span className="text-white font-bold text-sm">{buyer.sewingInput.toLocaleString()}</span>
+                      {reportData.factorySummary.buyerSummary.map((buyer, idx) => (
+                        <div key={idx} className="flex justify-between text-xs">
+                          <span className="text-black truncate max-w-[140px]">{buyer.buyerName}</span>
+                          <span className="text-black font-bold">{buyer.sewingInput.toLocaleString()}</span>
                         </div>
                       ))}
-                      <div className="flex justify-between items-center px-2 py-1.5 rounded bg-white/25 mt-1">
-                        <span className="text-white font-semibold text-xs">TOTAL INPUT</span>
-                        <span className="text-white font-black text-base">{reportData.factorySummary.totalSewingInput.toLocaleString()}</span>
+                      <div className="flex justify-between text-xs border-t border-black mt-0.5 pt-0.5">
+                        <span className="text-black font-bold">TOTAL</span>
+                        <span className="text-black font-bold">
+                          {reportData.factorySummary.buyerSummary.reduce((sum, b) => sum + b.sewingInput, 0).toLocaleString()}
+                        </span>
                       </div>
                     </>
                   ) : (
-                    <div className="text-white/70 text-xs text-center py-4">No buyer data available</div>
+                    <div className="text-black text-xs">No buyer data</div>
                   )}
                 </div>
               </div>

@@ -8,7 +8,7 @@ import { getSession } from '@/lib/session';
  * GET /api/hourly-report
  * Fetch hourly production monitoring report
  * Uses saved snapshots to calculate time-slot-wise input
- * Also fetches factory report for buyer-wise summary
+ * Also fetches buyer-wise summary from factory report
  * 
  * Query params:
  * - date: Date in DD-MMM-YYYY format (e.g., "28-Jan-2026")
@@ -49,10 +49,7 @@ export async function GET(request: NextRequest) {
       },
       factorySummary: factoryReport.success ? {
         buyerSummary: factoryReport.buyerSummary,
-        totalSewingInput: factoryReport.totalSewingInput,
-        totalSewingOutput: factoryReport.totalSewingOutput,
-        totalFinishing: factoryReport.totalFinishing,
-        totalShipment: factoryReport.totalShipment
+        totalSewingInput: factoryReport.totalSewingInput
       } : null
     });
 
