@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { decrypt, isSessionInactive, encrypt } from '@/lib/session';
 
 const publicRoutes = ['/login', '/api/auth/login', '/api/auth/logout', '/api/auth/activity'];
-const protectedRoutes = ['/dashboard', '/api/stats', '/api/users', '/api/po', '/api/accessories', '/api/closing'];
+const protectedRoutes = ['/dashboard', '/api/stats', '/api/users', '/api/po', '/api/accessories', '/api/closing', '/api/challan-report'];
 
 // Permission requirements for each route
 const routePermissions: Record<string, string> = {
@@ -11,10 +11,12 @@ const routePermissions: Record<string, string> = {
   '/dashboard/closing-report': 'closing',
   '/dashboard/sewing-closing-report': 'sewing_closing_report',
   '/dashboard/daily-line-wise-input-report': 'daily_line_wise_input_report',
+  '/dashboard/challan-wise-input-report': 'challan_wise_input_report',
   '/dashboard/users': 'admin', // Only admin
   '/api/po': 'po_sheet',
   '/api/accessories': 'accessories',
   '/api/closing': 'closing',
+  '/api/challan-report': 'challan_wise_input_report',
   '/api/users': 'admin',
 };
 

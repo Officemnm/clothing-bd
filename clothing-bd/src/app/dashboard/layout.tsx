@@ -19,6 +19,7 @@ import {
   BellIcon,
   DocumentChartBarIcon,
   TableCellsIcon,
+  ClipboardDocumentListIcon,
 } from '@heroicons/react/24/outline';
 import {
   HomeIcon as HomeIconSolid,
@@ -28,6 +29,7 @@ import {
   UsersIcon as UsersIconSolid,
   DocumentChartBarIcon as DocumentChartBarIconSolid,
   TableCellsIcon as TableCellsIconSolid,
+  ClipboardDocumentListIcon as ClipboardDocumentListIconSolid,
 } from '@heroicons/react/24/solid';
 import { useActivityTimeout } from '@/hooks/useActivityTimeout';
 import { useERPCookieRefresh } from '@/hooks/useERPCookieRefresh';
@@ -82,6 +84,14 @@ const navItems = [
     iconSolid: TableCellsIconSolid,
     permission: 'daily_line_wise_input_report',
     gradient: 'from-sky-500 to-blue-500'
+  },
+  { 
+    name: 'Challan Wise Input Report', 
+    href: '/dashboard/challan-wise-input-report', 
+    icon: ClipboardDocumentListIcon,
+    iconSolid: ClipboardDocumentListIconSolid,
+    permission: 'challan_wise_input_report',
+    gradient: 'from-violet-500 to-purple-500'
   },
   { 
     name: 'Users', 
@@ -483,18 +493,49 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-slate-50">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="flex flex-col items-center gap-4"
+          className="flex flex-col items-center gap-6"
         >
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-            className="w-12 h-12 border-4 border-slate-200 border-t-teal-500 rounded-full"
-          />
-          <span className="text-sm text-slate-500 font-medium">Loading...</span>
+          <div className="relative">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+              className="w-16 h-16 border-4 border-slate-200 border-t-teal-500 rounded-full"
+            />
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="absolute inset-0 flex items-center justify-center"
+            >
+              <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
+                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            </motion.div>
+          </div>
+          <div className="text-center">
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="text-sm font-semibold text-slate-700"
+            >
+              Loading Dashboard
+            </motion.p>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="text-xs text-slate-400 mt-1"
+            >
+              Please wait...
+            </motion.p>
+          </div>
         </motion.div>
       </div>
     );
@@ -626,20 +667,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-32px)] max-w-sm bg-white rounded-2xl shadow-2xl z-[101] overflow-hidden max-h-[90vh] overflow-y-auto"
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-32px)] max-w-md bg-white rounded-3xl shadow-2xl z-[101] overflow-hidden max-h-[90vh] overflow-y-auto"
             >
               {/* Close Button */}
               <button
                 onClick={() => { setProfileOpen(false); setEditMode(false); setMessage(null); }}
-                className="absolute top-3 right-3 w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 active:bg-slate-300 flex items-center justify-center text-slate-500 transition-colors z-10"
+                className="absolute top-4 right-4 w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 flex items-center justify-center text-slate-500 transition-colors z-10"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
 
+              {/* Header Background */}
+              <div className="h-20 bg-gradient-to-br from-teal-500 to-emerald-500 relative" />
+
               {/* Content */}
-              <div className="p-5 sm:p-6">
+              <div className="px-6 pb-6 -mt-10">
                 {/* Message */}
                 <AnimatePresence>
                   {message && (
@@ -647,10 +691,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className={`mb-4 p-3 rounded-lg text-sm font-medium ${
+                      className={`mb-4 p-3 rounded-xl text-sm font-medium ${
                         message.type === 'success' 
-                          ? 'bg-green-50 text-green-600 border border-green-200' 
-                          : 'bg-red-50 text-red-600 border border-red-200'
+                          ? 'bg-emerald-50 text-emerald-600' 
+                          : 'bg-red-50 text-red-600'
                       }`}
                     >
                       {message.text}
@@ -660,8 +704,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                 {/* Profile Picture */}
                 <div className="flex flex-col items-center mb-6">
-                  <div className="relative mb-3">
-                    <div className="w-24 h-24 rounded-full overflow-hidden bg-slate-100 ring-4 ring-slate-50">
+                  <div className="relative mb-4">
+                    <div className="w-24 h-24 rounded-full overflow-hidden bg-slate-100 ring-4 ring-white shadow-lg">
                       {profileForm.photo || userData?.photo ? (
                         <Image
                           src={profileForm.photo || userData?.photo || ''}
@@ -671,9 +715,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        /* Professional human silhouette icon */
-                        <div className="w-full h-full bg-slate-200 flex items-center justify-center">
-                          <svg className="w-16 h-16 text-slate-400" viewBox="0 0 24 24" fill="currentColor">
+                        <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center">
+                          <svg className="w-12 h-12 text-slate-400" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
                           </svg>
                         </div>
@@ -682,7 +725,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     {editMode && (
                       <button
                         onClick={() => fileInputRef.current?.click()}
-                        className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-teal-500 shadow-lg flex items-center justify-center text-white hover:bg-teal-600 transition-colors"
+                        className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-teal-500 shadow-lg flex items-center justify-center text-white hover:bg-teal-600 transition-colors"
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -699,12 +742,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   </div>
                   
                   {/* Name and Role */}
-                  <h3 className="text-xl font-bold text-slate-800">{userData?.username}</h3>
-                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold mt-2 ${
+                  <h3 className="text-lg font-bold text-slate-800">{userData?.username}</h3>
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold mt-2 ${
                     userData?.role === 'admin' 
                       ? 'bg-amber-100 text-amber-700' 
                       : 'bg-slate-100 text-slate-600'
                   }`}>
+                    {userData?.role === 'admin' && (
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    )}
                     {userData?.role === 'admin' ? 'Administrator' : 'User'}
                   </span>
                 </div>
@@ -713,49 +761,49 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   /* Edit Form - Simplified */
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Mobile Number</label>
+                      <label className="block text-sm font-medium text-slate-600 mb-2">Mobile Number</label>
                       <input
                         type="tel"
                         value={profileForm.phone}
                         onChange={(e) => setProfileForm(prev => ({ ...prev, phone: e.target.value }))}
-                        className="w-full px-4 py-2.5 text-sm rounded-lg border-2 border-slate-200 bg-white focus:border-teal-500 focus:ring-0 transition-colors"
+                        className="w-full px-4 py-3 text-sm rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-teal-400 focus:shadow-[0_0_0_2px_rgba(20,184,166,0.1)] focus:outline-none transition-all"
                         placeholder="+880 1XXX-XXXXXX"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Address</label>
+                      <label className="block text-sm font-medium text-slate-600 mb-2">Address</label>
                       <input
                         type="text"
                         value={profileForm.address}
                         onChange={(e) => setProfileForm(prev => ({ ...prev, address: e.target.value }))}
-                        className="w-full px-4 py-2.5 text-sm rounded-lg border-2 border-slate-200 bg-white focus:border-teal-500 focus:ring-0 transition-colors"
+                        className="w-full px-4 py-3 text-sm rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-teal-400 focus:shadow-[0_0_0_2px_rgba(20,184,166,0.1)] focus:outline-none transition-all"
                         placeholder="Your address"
                       />
                     </div>
 
                     {/* Password Change */}
                     <div className="pt-3 mt-3 border-t border-slate-100">
-                      <p className="text-sm font-medium text-slate-700 mb-3">Change Password</p>
+                      <p className="text-sm font-medium text-slate-600 mb-3">Change Password</p>
                       <div className="space-y-3">
                         <input
                           type="password"
                           value={profileForm.currentPassword}
                           onChange={(e) => setProfileForm(prev => ({ ...prev, currentPassword: e.target.value }))}
-                          className="w-full px-4 py-2.5 text-sm rounded-lg border-2 border-slate-200 bg-white focus:border-teal-500 focus:ring-0 transition-colors"
+                          className="w-full px-4 py-3 text-sm rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-teal-400 focus:shadow-[0_0_0_2px_rgba(20,184,166,0.1)] focus:outline-none transition-all"
                           placeholder="Current password"
                         />
                         <input
                           type="password"
                           value={profileForm.newPassword}
                           onChange={(e) => setProfileForm(prev => ({ ...prev, newPassword: e.target.value }))}
-                          className="w-full px-4 py-2.5 text-sm rounded-lg border-2 border-slate-200 bg-white focus:border-teal-500 focus:ring-0 transition-colors"
+                          className="w-full px-4 py-3 text-sm rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-teal-400 focus:shadow-[0_0_0_2px_rgba(20,184,166,0.1)] focus:outline-none transition-all"
                           placeholder="New password"
                         />
                         <input
                           type="password"
                           value={profileForm.confirmPassword}
                           onChange={(e) => setProfileForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                          className="w-full px-4 py-2.5 text-sm rounded-lg border-2 border-slate-200 bg-white focus:border-teal-500 focus:ring-0 transition-colors"
+                          className="w-full px-4 py-3 text-sm rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-teal-400 focus:shadow-[0_0_0_2px_rgba(20,184,166,0.1)] focus:outline-none transition-all"
                           placeholder="Confirm password"
                         />
                       </div>
@@ -765,14 +813,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <div className="flex gap-3 pt-3">
                       <button
                         onClick={() => { setEditMode(false); setMessage(null); }}
-                        className="flex-1 py-2.5 text-sm font-medium rounded-lg border-2 border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+                        className="flex-1 py-3 text-sm font-medium rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
                       >
                         Cancel
                       </button>
                       <button
                         onClick={handleSaveProfile}
                         disabled={saving}
-                        className="flex-1 py-2.5 text-sm font-medium rounded-lg bg-teal-500 text-white hover:bg-teal-600 transition-colors disabled:opacity-50"
+                        className="flex-1 py-3 text-sm font-medium rounded-xl bg-teal-500 text-white hover:bg-teal-600 transition-all disabled:opacity-50 shadow-md shadow-teal-500/20"
                       >
                         {saving ? 'Saving...' : 'Save'}
                       </button>
@@ -782,10 +830,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   /* View Mode - Simplified */
                   <div className="space-y-3">
                     {/* Mobile */}
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50">
-                      <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
-                      </svg>
+                    <div className="flex items-center gap-4 p-4 rounded-xl bg-slate-50">
+                      <div className="w-10 h-10 rounded-lg bg-white shadow-sm flex items-center justify-center">
+                        <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+                        </svg>
+                      </div>
                       <div className="flex-1">
                         <p className="text-xs text-slate-400">Mobile</p>
                         <p className="text-sm font-medium text-slate-700">{userData?.phone || '—'}</p>
@@ -793,11 +843,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </div>
 
                     {/* Address */}
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50">
-                      <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-                      </svg>
+                    <div className="flex items-center gap-4 p-4 rounded-xl bg-slate-50">
+                      <div className="w-10 h-10 rounded-lg bg-white shadow-sm flex items-center justify-center">
+                        <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                        </svg>
+                      </div>
                       <div className="flex-1">
                         <p className="text-xs text-slate-400">Address</p>
                         <p className="text-sm font-medium text-slate-700">{userData?.address || '—'}</p>
@@ -806,7 +858,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                     <button
                       onClick={() => setEditMode(true)}
-                      className="w-full mt-4 py-2.5 text-sm font-medium rounded-lg bg-teal-500 text-white hover:bg-teal-600 transition-colors"
+                      className="w-full mt-4 py-3 text-sm font-medium rounded-xl bg-teal-500 text-white hover:bg-teal-600 transition-all shadow-md shadow-teal-500/20"
                     >
                       Edit Profile
                     </button>
@@ -819,38 +871,38 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </AnimatePresence>
 
       {/* Mobile Header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white/98 backdrop-blur-xl border-b border-slate-200/60 z-40 shadow-sm safe-area-inset">
+      <header className="lg:hidden fixed top-0 left-0 right-0 h-[64px] bg-white/95 backdrop-blur-xl border-b border-slate-100 z-40 safe-area-inset">
         <div className="h-full flex items-center justify-between px-4 max-w-screen-xl mx-auto">
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setMobileOpen(true)}
-            className="w-11 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors active:bg-slate-300"
+            className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
             aria-label="Open menu"
           >
-            <Bars3Icon className="w-5 h-5 text-slate-700" />
+            <Bars3Icon className="w-5 h-5 text-slate-600" />
           </motion.button>
           <div className="flex items-center gap-2">
             <Logo size="sm" animate={false} />
-            <span className="font-bold text-slate-800 text-sm tracking-tight">Clothing BD</span>
+            <span className="font-bold text-slate-800 text-sm">Clothing BD</span>
           </div>
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setProfileOpen(true)}
-            className="w-11 h-11 rounded-xl overflow-hidden ring-2 ring-teal-100 shadow-sm"
+            className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-slate-100"
             aria-label="Open profile"
           >
             {userData?.photo ? (
               <Image
                 src={userData.photo}
                 alt="Profile"
-                width={44}
-                height={44}
+                width={40}
+                height={40}
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center text-white text-sm font-bold">
+              <div className="w-full h-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white text-sm font-semibold">
                 {user?.name?.charAt(0).toUpperCase() || 'U'}
               </div>
             )}
@@ -879,25 +931,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
             transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-            className="lg:hidden fixed top-0 left-0 h-full w-[280px] max-w-[85vw] bg-white shadow-2xl z-50 flex flex-col"
+            className="lg:hidden fixed top-0 left-0 h-full w-[300px] max-w-[85vw] bg-white shadow-2xl z-50 flex flex-col"
           >
             {/* Mobile Header */}
-            <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100 flex-shrink-0">
-              <div className="flex items-center gap-2.5">
-                <Logo size="sm" animate={false} />
-                <span className="font-bold text-slate-800 text-base">Clothing BD</span>
+            <div className="h-[68px] flex items-center justify-between px-5 border-b border-slate-100/80 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Logo size="sm" animate={false} />
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-bold text-slate-800 text-[15px] leading-tight">Clothing BD</span>
+                  <span className="text-[10px] text-slate-400 font-medium">Management System</span>
+                </div>
               </div>
               <button
                 onClick={() => setMobileOpen(false)}
-                className="w-9 h-9 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
+                className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 flex items-center justify-center transition-colors"
               >
                 <XMarkIcon className="w-5 h-5 text-slate-600" />
               </button>
             </div>
 
             {/* Mobile Navigation */}
-            <nav className="flex-1 py-4 px-3 overflow-y-auto">
-              <p className="px-3 mb-3 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Menu</p>
+            <nav className="flex-1 py-5 px-4 overflow-y-auto">
               <div className="space-y-1">
                 {filteredNav.map((item, index) => {
                   const active = isActive(item.href);
@@ -905,16 +961,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   return (
                     <motion.div
                       key={item.href}
-                      initial={{ opacity: 0, x: -15 }}
+                      initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.03 }}
                     >
                       <Link
                         href={item.href}
-                        className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 ${
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
                           active 
-                            ? 'bg-teal-500 text-white shadow-md' 
-                            : 'text-slate-600 hover:bg-slate-100'
+                            ? 'bg-teal-500 text-white shadow-md shadow-teal-500/25' 
+                            : 'text-slate-600 hover:bg-slate-100 active:bg-slate-200'
                         }`}
                       >
                         <IconComponent className={`w-5 h-5 flex-shrink-0 ${active ? 'text-white' : ''}`} />
@@ -927,10 +983,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </nav>
 
             {/* Mobile Footer */}
-            <div className="border-t border-slate-100 p-3 flex-shrink-0">
+            <div className="border-t border-slate-100 p-4 flex-shrink-0">
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-slate-600 hover:text-red-500 hover:bg-red-50 transition-all duration-200 font-medium text-sm"
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-slate-600 hover:text-red-500 hover:bg-red-50 transition-all duration-200 font-medium text-sm"
               >
                 <ArrowRightOnRectangleIcon className="w-5 h-5" />
                 <span>Logout</span>
@@ -946,10 +1002,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         animate={sidebarOpen ? 'expanded' : 'collapsed'}
         variants={sidebarVariants}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="hidden lg:flex fixed top-0 left-0 h-full bg-white z-40 flex-col border-r border-slate-200/60 shadow-sm overflow-hidden"
+        className="hidden lg:flex fixed top-0 left-0 h-full bg-white z-40 flex-col border-r border-slate-200/60 shadow-[4px_0_24px_rgba(0,0,0,0.04)] overflow-hidden"
       >
         {/* Logo Section */}
-        <div className="h-[72px] flex items-center px-4 border-b border-slate-100">
+        <div className="h-[68px] flex items-center px-4 border-b border-slate-100">
           <AnimatePresence mode="wait">
             {sidebarOpen ? (
               <motion.div
@@ -962,7 +1018,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <Logo size="sm" animate={false} />
                 <div className="flex flex-col min-w-0">
                   <span className="font-bold text-slate-800 text-sm leading-tight truncate">Clothing BD</span>
-                  <span className="text-[10px] text-slate-400 font-medium">Management System</span>
+                  <span className="text-[10px] text-slate-400">Management System</span>
                 </div>
               </motion.div>
             ) : (
@@ -980,10 +1036,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <motion.button
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              whileHover={{ scale: 1.1 }}
+              whileHover={{ scale: 1.1, backgroundColor: '#f1f5f9' }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-slate-100 transition-colors flex-shrink-0 ml-2"
+              className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors flex-shrink-0 ml-2"
             >
               <ChevronLeftIcon className="w-4 h-4 text-slate-400" />
             </motion.button>
@@ -996,7 +1052,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <motion.p 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="px-2 mb-3 text-[10px] font-semibold text-slate-400 uppercase tracking-wider"
+              className="px-3 mb-3 text-[10px] font-semibold text-slate-400 uppercase tracking-wider"
             >
               Menu
             </motion.p>
@@ -1012,10 +1068,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <motion.div
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.03 }}
+                      transition={{ delay: index * 0.04 }}
                       whileHover={{ x: sidebarOpen ? 2 : 0 }}
                       whileTap={{ scale: 0.98 }}
-                      className={`flex items-center ${sidebarOpen ? 'gap-3 px-3' : 'justify-center px-0'} py-2.5 rounded-lg transition-all duration-200 ${
+                      className={`relative flex items-center ${sidebarOpen ? 'gap-3 px-4' : 'justify-center px-0'} py-3 rounded-xl transition-all duration-200 ${
                         active 
                           ? 'bg-teal-500 text-white shadow-md shadow-teal-500/25' 
                           : 'text-slate-600 hover:text-slate-800 hover:bg-slate-100'
@@ -1032,7 +1088,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                   {/* Tooltip for collapsed state */}
                   {!sidebarOpen && (
-                    <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-medium rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 whitespace-nowrap z-50 pointer-events-none">
+                    <div className="absolute left-full top-1/2 -translate-y-1/2 ml-4 px-3 py-2 bg-slate-800 text-white text-xs font-medium rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 pointer-events-none">
                       {item.name}
                       <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-2 h-2 bg-slate-800 rotate-45" />
                     </div>
@@ -1050,10 +1106,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <motion.button
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              whileHover={{ scale: 1.05 }}
+              whileHover={{ scale: 1.05, backgroundColor: '#f1f5f9' }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setSidebarOpen(true)}
-              className="w-full flex justify-center py-2.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all duration-200 mb-2"
+              className="w-full flex justify-center py-2.5 rounded-xl text-slate-500 transition-all duration-200 mb-2"
             >
               <ChevronLeftIcon className="w-5 h-5 rotate-180" />
             </motion.button>
@@ -1065,7 +1121,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               whileHover={{ scale: sidebarOpen ? 1.01 : 1.05 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleLogout}
-              className={`w-full flex items-center ${sidebarOpen ? 'gap-3 px-3' : 'justify-center'} py-2.5 rounded-lg text-slate-500 hover:text-red-500 hover:bg-red-50 transition-all duration-200`}
+              className={`w-full flex items-center ${sidebarOpen ? 'gap-3 px-4' : 'justify-center'} py-3 rounded-xl text-slate-500 hover:text-red-500 hover:bg-red-50 transition-all duration-200`}
             >
               <ArrowRightOnRectangleIcon className="w-5 h-5" />
               {sidebarOpen && <span className="text-sm font-medium">Logout</span>}
@@ -1073,7 +1129,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             
             {/* Tooltip for collapsed state */}
             {!sidebarOpen && (
-              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-medium rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 whitespace-nowrap z-50 pointer-events-none">
+              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-4 px-3 py-2 bg-slate-800 text-white text-xs font-medium rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 pointer-events-none">
                 Logout
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-2 h-2 bg-slate-800 rotate-45" />
               </div>
@@ -1087,32 +1143,47 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         initial={false}
         animate={{ marginLeft: sidebarOpen ? 280 : 80 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="hidden lg:flex fixed top-0 right-0 left-0 h-[72px] bg-white/80 backdrop-blur-xl border-b border-slate-100/80 z-30 items-center justify-between px-6"
+        className="hidden lg:flex fixed top-0 right-0 left-0 h-[68px] bg-white/95 backdrop-blur-xl border-b border-slate-100 z-30 items-center justify-between px-8"
       >
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search anything..."
-              className="w-72 pl-11 pr-4 py-2.5 text-sm bg-slate-50/80 border border-slate-200/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 placeholder:text-slate-400 transition-all"
-            />
+        <div className="flex items-center gap-6">
+          {/* Page title */}
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-slate-400">Dashboard</span>
+            {pathname !== '/dashboard' && (
+              <>
+                <ChevronLeftIcon className="w-3 h-3 text-slate-300 rotate-180" />
+                <span className="text-slate-700 font-medium capitalize">
+                  {pathname.split('/').pop()?.replace(/-/g, ' ')}
+                </span>
+              </>
+            )}
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          {/* Search Bar */}
+          <div className="relative group">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 transition-colors">
+              <MagnifyingGlassIcon className="w-[18px] h-[18px] text-slate-400 group-focus-within:text-teal-500" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search..."
+              className="w-56 pl-11 pr-4 py-2.5 text-sm bg-slate-50 rounded-xl focus:outline-none focus:bg-white focus:shadow-[0_0_0_2px_rgba(20,184,166,0.15)] placeholder:text-slate-400 transition-all duration-200 border-0"
+            />
+            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden md:inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 bg-white/80 rounded border border-slate-200/50">
+              ⌘K
+            </kbd>
+          </div>
+
           {/* Notification Button */}
           <motion.button 
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             className="relative w-10 h-10 rounded-xl bg-slate-50 hover:bg-slate-100 flex items-center justify-center transition-colors"
           >
-            <BellIcon className="w-5 h-5 text-slate-600" />
-            <motion.span 
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-white"
-            />
+            <BellIcon className="w-5 h-5 text-slate-500" />
+            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
           </motion.button>
 
           {/* Divider */}
@@ -1123,13 +1194,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => setProfileOpen(true)}
-            className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-50 transition-colors"
+            className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-50 transition-all"
           >
             <div className="text-right">
-              <p className="text-sm font-semibold text-slate-700">{userData?.username}</p>
-              <p className="text-xs text-slate-400">{userData?.designation || userData?.role}</p>
+              <p className="text-sm font-medium text-slate-700">{userData?.username}</p>
+              <p className="text-[11px] text-slate-400 capitalize">{userData?.designation || userData?.role}</p>
             </div>
-            <div className="w-10 h-10 rounded-xl overflow-hidden ring-2 ring-slate-100">
+            <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-slate-100">
               {userData?.photo ? (
                 <Image
                   src={userData.photo}
@@ -1139,7 +1210,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center text-white text-sm font-bold">
+                <div className="w-full h-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white text-sm font-semibold">
                   {user?.name?.charAt(0).toUpperCase() || 'U'}
                 </div>
               )}
@@ -1153,38 +1224,45 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         initial={false}
         animate={{ marginLeft: sidebarOpen ? 280 : 80 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="hidden lg:flex min-h-screen bg-slate-50/50 flex-col"
+        className="hidden lg:flex min-h-screen bg-slate-50 flex-col"
       >
-        <div className="flex-1 pt-[72px]">
-          <div className="p-6 lg:p-8">
+        <div className="flex-1 pt-[68px]">
+          <div className="p-6 lg:p-8 max-w-[1600px] mx-auto">
             {children}
           </div>
         </div>
         
         {/* Footer Credit - Desktop */}
-        <footer className="border-t border-slate-200 bg-gradient-to-r from-slate-100 to-slate-50 py-4 px-6 text-center">
-          <p className="text-sm text-slate-600">
-            Developed by <span className="font-bold text-teal-600">MEHEDI HASAN</span> © 2026
-          </p>
-          <p className="text-xs text-slate-500 mt-1">
-            All rights reserved.
-          </p>
+        <footer className="border-t border-slate-100 bg-white py-4 px-6">
+          <div className="flex items-center justify-between max-w-[1600px] mx-auto">
+            <p className="text-sm text-slate-500">
+              © 2026 <span className="font-medium text-slate-700">Clothing BD</span>
+            </p>
+            <p className="text-sm text-slate-500">
+              Developed by <span className="font-semibold text-teal-600">MEHEDI HASAN</span>
+            </p>
+          </div>
         </footer>
       </motion.main>
 
       {/* Mobile Main Content Area */}
-      <main className="lg:hidden min-h-screen bg-slate-50/50 flex flex-col">
-        <div className="flex-1 pt-16">
-          <div className="p-4 sm:p-6">
+      <main className="lg:hidden min-h-screen bg-slate-50 flex flex-col">
+        <div className="flex-1 pt-[64px]">
+          <div className="p-4 sm:p-5">
             {children}
           </div>
         </div>
         
         {/* Footer Credit - Mobile */}
-        <footer className="border-t border-slate-200 bg-gradient-to-r from-slate-100 to-slate-50 py-3 px-4 text-center">
-          <p className="text-xs text-slate-600">
-            Developed by <span className="font-bold text-teal-600">MEHEDI HASAN</span> © 2026
-          </p>
+        <footer className="border-t border-slate-100 bg-white py-4 px-4">
+          <div className="text-center space-y-1">
+            <p className="text-xs text-slate-500">
+              © 2026 <span className="font-medium text-slate-700">Clothing BD</span>
+            </p>
+            <p className="text-xs text-slate-400">
+              by <span className="font-semibold text-teal-600">MEHEDI HASAN</span>
+            </p>
+          </div>
         </footer>
       </main>
     </div>

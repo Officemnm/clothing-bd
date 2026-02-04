@@ -51,6 +51,7 @@ export default function UsersPage() {
       accessories: false,
       sewing_closing_report: false,
       daily_line_wise_input_report: false,
+      challan_wise_input_report: false,
     },
   });
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -93,6 +94,7 @@ export default function UsersPage() {
         accessories: false,
         sewing_closing_report: false,
         daily_line_wise_input_report: false,
+        challan_wise_input_report: false,
       },
     });
     setMessage(null);
@@ -111,6 +113,7 @@ export default function UsersPage() {
           accessories: user.permissions?.includes('accessories') ?? false,
           sewing_closing_report: user.permissions?.includes('sewing_closing_report') ?? false,
           daily_line_wise_input_report: user.permissions?.includes('daily_line_wise_input_report') ?? false,
+          challan_wise_input_report: user.permissions?.includes('challan_wise_input_report') ?? false,
         },
       });
     } else {
@@ -137,6 +140,7 @@ export default function UsersPage() {
     if (formData.permissions.accessories) permissions.push('accessories');
     if (formData.permissions.sewing_closing_report) permissions.push('sewing_closing_report');
     if (formData.permissions.daily_line_wise_input_report) permissions.push('daily_line_wise_input_report');
+    if (formData.permissions.challan_wise_input_report) permissions.push('challan_wise_input_report');
 
     try {
       const isEdit = modalType === 'edit';
@@ -518,6 +522,7 @@ export default function UsersPage() {
                           { key: 'accessories', label: 'Accessories' },
                           { key: 'sewing_closing_report', label: 'Sewing Closing Report' },
                           { key: 'daily_line_wise_input_report', label: 'Daily Line Wise Input Report' },
+                          { key: 'challan_wise_input_report', label: 'Challan Wise Input Report' },
                         ].map(({ key, label }) => (
                           <label key={key} className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
                             formData.permissions[key as keyof typeof formData.permissions]
