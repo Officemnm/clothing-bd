@@ -39,22 +39,36 @@ function LoginContent() {
     setError('');
 
     try {
+      // Clear all session data first
+      sessionStorage.clear();
+      localStorage.removeItem('session');
+      
+      // Clear cookies multiple ways to ensure they're gone
       document.cookie = 'session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
       document.cookie = 'session=; max-age=0; path=/;';
+      document.cookie = 'session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=' + window.location.hostname;
       
+      // Call logout endpoint to clear server-side
       const logoutRes = await fetch('/api/auth/logout', { 
         method: 'POST',
         credentials: 'include',
+        cache: 'no-store',
       });
       await logoutRes.json();
+      
+      // Clear cookies again after logout response
       document.cookie = 'session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      await new Promise(resolve => setTimeout(resolve, 200));
+      document.cookie = 'session=; max-age=0; path=/;';
+      
+      // Wait for cookie to be fully cleared
+      await new Promise(resolve => setTimeout(resolve, 300));
       
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache, no-store',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
         },
         credentials: 'include',
         cache: 'no-store',
@@ -64,9 +78,12 @@ function LoginContent() {
       const data = await response.json();
       
       if (data.success) {
+        // Set new login flags
         sessionStorage.setItem('newLogin', 'true');
-        sessionStorage.setItem('loginUser', data.user?.username || '');
+        sessionStorage.setItem('loginUser', data.user?.username || username);
+        sessionStorage.setItem('loginTime', Date.now().toString());
         
+        // Clear any caches
         if ('caches' in window) {
           const cacheNames = await caches.keys();
           await Promise.all(cacheNames.map(name => caches.delete(name)));
@@ -189,13 +206,13 @@ function LoginContent() {
             >
               {/* Username */}
               <motion.div variants={itemVariants}>
-                <div className={`flex items-center bg-slate-50/50 rounded-xl transition-all duration-300 ${
+                <div className={`relative flex items-center rounded-xl overflow-hidden transition-all duration-200 ${
                   focusedField === 'username' 
-                    ? 'bg-white shadow-[0_0_0_2px_rgba(20,184,166,0.15)] border border-teal-400' 
-                    : 'border border-slate-200/80 hover:border-slate-300'
+                    ? 'bg-white ring-2 ring-teal-500/20 border border-teal-400' 
+                    : 'bg-slate-50 border border-slate-200 hover:border-slate-300'
                 }`}>
-                  <span className={`pl-4 transition-colors duration-200 ${focusedField === 'username' ? 'text-teal-500' : 'text-slate-400'}`}>
-                    <UserIcon className="w-5 h-5" />
+                  <span className={`absolute left-3.5 transition-colors duration-200 ${focusedField === 'username' ? 'text-teal-500' : 'text-slate-400'}`}>
+                    <UserIcon className="w-[18px] h-[18px]" />
                   </span>
                   <input
                     type="text"
@@ -206,20 +223,20 @@ function LoginContent() {
                     placeholder="Username"
                     required
                     autoComplete="off"
-                    className="w-full py-3.5 px-3 text-slate-800 bg-transparent text-sm font-medium placeholder:text-slate-400 focus:outline-none"
+                    className="w-full py-3 pl-11 pr-4 text-slate-800 bg-transparent text-sm font-medium placeholder:text-slate-400 focus:outline-none border-none"
                   />
                 </div>
               </motion.div>
 
               {/* Password */}
               <motion.div variants={itemVariants}>
-                <div className={`flex items-center bg-slate-50/50 rounded-xl transition-all duration-300 ${
+                <div className={`relative flex items-center rounded-xl overflow-hidden transition-all duration-200 ${
                   focusedField === 'password' 
-                    ? 'bg-white shadow-[0_0_0_2px_rgba(20,184,166,0.15)] border border-teal-400' 
-                    : 'border border-slate-200/80 hover:border-slate-300'
+                    ? 'bg-white ring-2 ring-teal-500/20 border border-teal-400' 
+                    : 'bg-slate-50 border border-slate-200 hover:border-slate-300'
                 }`}>
-                  <span className={`pl-4 transition-colors duration-200 ${focusedField === 'password' ? 'text-teal-500' : 'text-slate-400'}`}>
-                    <LockClosedIcon className="w-5 h-5" />
+                  <span className={`absolute left-3.5 transition-colors duration-200 ${focusedField === 'password' ? 'text-teal-500' : 'text-slate-400'}`}>
+                    <LockClosedIcon className="w-[18px] h-[18px]" />
                   </span>
                   <input
                     type="password"
@@ -229,7 +246,7 @@ function LoginContent() {
                     onBlur={() => setFocusedField(null)}
                     placeholder="Password"
                     required
-                    className="w-full py-3.5 px-3 text-slate-800 bg-transparent text-sm font-medium placeholder:text-slate-400 focus:outline-none"
+                    className="w-full py-3 pl-11 pr-4 text-slate-800 bg-transparent text-sm font-medium placeholder:text-slate-400 focus:outline-none border-none"
                   />
                 </div>
               </motion.div>

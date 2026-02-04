@@ -14,10 +14,20 @@ export async function GET() {
     }
 
     const users = await getUsers();
+    
+    // Hide admin password from response
+    const sanitizedUsers = Object.fromEntries(
+      Object.entries(users).map(([username, user]) => [
+        username,
+        user.role === 'admin' 
+          ? { ...user, password: '••••••••' } // Hide admin password
+          : user
+      ])
+    );
 
     return NextResponse.json({
       success: true,
-      users,
+      users: sanitizedUsers,
     });
   } catch (error) {
     console.error('Get users error:', error);
@@ -40,7 +50,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { username, password, permissions } = body;
+    const { username, password, permissions, role } = body;
 
     if (!username || !password) {
       return NextResponse.json(
@@ -49,7 +59,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await createUser(username, password, permissions || []);
+    const result = await createUser(username, password, permissions || [], role || 'user');
 
     if (!result) {
       return NextResponse.json(
@@ -126,7 +136,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { username, password, permissions, action } = body;
+    const { username, password, permissions, action, role } = body;
 
     if (!username) {
       return NextResponse.json(
@@ -144,16 +154,21 @@ export async function PUT(request: NextRequest) {
           { status: 404 }
         );
       }
+      // Hide admin password
+      const sanitizedUser = user.role === 'admin' 
+        ? { ...user, password: '••••••••' }
+        : user;
       return NextResponse.json({
         success: true,
-        user,
+        user: sanitizedUser,
       });
     }
 
     // Update user
-    const updates: { password?: string; permissions?: string[] } = {};
+    const updates: { password?: string; permissions?: string[]; role?: 'admin' | 'moderator' | 'user' } = {};
     if (password !== undefined) updates.password = password;
     if (permissions !== undefined) updates.permissions = permissions;
+    if (role !== undefined) updates.role = role;
 
     const result = await updateUser(username, updates);
 

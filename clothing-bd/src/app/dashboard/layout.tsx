@@ -14,12 +14,14 @@ import {
   ArrowRightOnRectangleIcon,
   Bars3Icon,
   XMarkIcon,
-  ChevronLeftIcon,
+  Squares2X2Icon,
   MagnifyingGlassIcon,
   BellIcon,
-  DocumentChartBarIcon,
-  TableCellsIcon,
-  ClipboardDocumentListIcon,
+  ScissorsIcon,
+  ClockIcon,
+  DocumentDuplicateIcon,
+  WrenchScrewdriverIcon,
+  PresentationChartLineIcon,
 } from '@heroicons/react/24/outline';
 import {
   HomeIcon as HomeIconSolid,
@@ -27,20 +29,22 @@ import {
   CubeIcon as CubeIconSolid,
   ChartBarIcon as ChartBarIconSolid,
   UsersIcon as UsersIconSolid,
-  DocumentChartBarIcon as DocumentChartBarIconSolid,
-  TableCellsIcon as TableCellsIconSolid,
-  ClipboardDocumentListIcon as ClipboardDocumentListIconSolid,
+  ScissorsIcon as ScissorsIconSolid,
+  ClockIcon as ClockIconSolid,
+  DocumentDuplicateIcon as DocumentDuplicateIconSolid,
+  WrenchScrewdriverIcon as WrenchScrewdriverIconSolid,
+  PresentationChartLineIcon as PresentationChartLineIconSolid,
 } from '@heroicons/react/24/solid';
 import { useActivityTimeout } from '@/hooks/useActivityTimeout';
 import { useERPCookieRefresh } from '@/hooks/useERPCookieRefresh';
 import Logo from '@/components/Logo';
 
-// Navigation items with Heroicons
+// Navigation items with better matching icons
 const navItems = [
   { 
     name: 'Dashboard', 
     href: '/dashboard', 
-    icon: HomeIcon,
+    icon: Squares2X2Icon,
     iconSolid: HomeIconSolid,
     permission: null,
     gradient: 'from-teal-500 to-emerald-500'
@@ -56,40 +60,40 @@ const navItems = [
   { 
     name: 'Accessories', 
     href: '/dashboard/accessories', 
-    icon: CubeIcon,
-    iconSolid: CubeIconSolid,
+    icon: WrenchScrewdriverIcon,
+    iconSolid: WrenchScrewdriverIconSolid,
     permission: 'accessories',
     gradient: 'from-amber-500 to-orange-500'
   },
   { 
     name: 'Closing Report', 
     href: '/dashboard/closing-report', 
-    icon: ChartBarIcon,
-    iconSolid: ChartBarIconSolid,
+    icon: PresentationChartLineIcon,
+    iconSolid: PresentationChartLineIconSolid,
     permission: 'closing',
     gradient: 'from-emerald-500 to-teal-500'
   },
   { 
-    name: 'Sewing Closing Report', 
+    name: 'Sewing Closing', 
     href: '/dashboard/sewing-closing-report', 
-    icon: DocumentChartBarIcon,
-    iconSolid: DocumentChartBarIconSolid,
+    icon: ScissorsIcon,
+    iconSolid: ScissorsIconSolid,
     permission: 'sewing_closing_report',
     gradient: 'from-rose-500 to-pink-500'
   },
   { 
-    name: 'Daily Line Wise Input Report', 
+    name: 'Hourly Report', 
     href: '/dashboard/daily-line-wise-input-report', 
-    icon: TableCellsIcon,
-    iconSolid: TableCellsIconSolid,
+    icon: ClockIcon,
+    iconSolid: ClockIconSolid,
     permission: 'daily_line_wise_input_report',
     gradient: 'from-sky-500 to-blue-500'
   },
   { 
-    name: 'Challan Wise Input Report', 
+    name: 'Challan Report', 
     href: '/dashboard/challan-wise-input-report', 
-    icon: ClipboardDocumentListIcon,
-    iconSolid: ClipboardDocumentListIconSolid,
+    icon: DocumentDuplicateIcon,
+    iconSolid: DocumentDuplicateIconSolid,
     permission: 'challan_wise_input_report',
     gradient: 'from-violet-500 to-purple-500'
   },
@@ -106,8 +110,8 @@ const navItems = [
 
 // Animation variants
 const sidebarVariants = {
-  expanded: { width: 280 },
-  collapsed: { width: 80 }
+  expanded: { width: 260, x: 0 },
+  collapsed: { width: 0, x: -260 }
 };
 
 const navItemVariants = {
@@ -122,6 +126,11 @@ const tooltipVariants = {
   visible: { opacity: 1, x: 0, scale: 1 }
 };
 
+const floatAnimation = {
+  y: [0, -4, 0],
+  transition: { duration: 3, repeat: Infinity, ease: 'easeInOut' as const }
+};
+
 interface UserData {
   username: string;
   role: string;
@@ -133,6 +142,21 @@ interface UserData {
   permissions: string[];
   last_login: string;
   created_at: string;
+  firstName: string;
+  lastName: string;
+}
+
+interface Notification {
+  id: string;
+  type: 'info' | 'warning' | 'success' | 'error';
+  title: string;
+  message: string;
+  action?: string;
+  actionBy: string;
+  actionByRole: string;
+  createdAt: string;
+  read: boolean;
+  bookingRef?: string;
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -145,9 +169,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [editMode, setEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
   const [profileForm, setProfileForm] = useState({
+    firstName: '',
+    lastName: '',
     phone: '',
     address: '',
     email: '',
@@ -207,6 +236,60 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     },
   });
 
+  // Fetch notifications for admin
+  const fetchNotifications = useCallback(async () => {
+    if (userData?.role !== 'admin') return;
+    try {
+      const res = await fetch('/api/notifications');
+      const data = await res.json();
+      if (data.success) {
+        setNotifications(data.notifications || []);
+        setUnreadCount(data.unreadCount || 0);
+      }
+    } catch (err) {
+      console.error('[Dashboard] Failed to fetch notifications:', err);
+    }
+  }, [userData?.role]);
+
+  // Poll notifications every 30 seconds for admin
+  useEffect(() => {
+    if (userData?.role === 'admin') {
+      fetchNotifications();
+      const interval = setInterval(fetchNotifications, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [userData?.role, fetchNotifications]);
+
+  // Mark notification as read
+  const markAsRead = async (id: string) => {
+    try {
+      await fetch('/api/notifications', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (err) {
+      console.error('[Dashboard] Failed to mark notification as read:', err);
+    }
+  };
+
+  // Mark all as read
+  const markAllAsRead = async () => {
+    try {
+      await fetch('/api/notifications', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ markAllRead: true }),
+      });
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setUnreadCount(0);
+    } catch (err) {
+      console.error('[Dashboard] Failed to mark all as read:', err);
+    }
+  };
+
   // Ref to track if fetch is in progress
   const fetchingRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -245,6 +328,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           setUserData(null);
           setSessionKey('');
           setProfileForm({
+            firstName: '',
+            lastName: '',
             phone: '',
             address: '',
             email: '',
@@ -288,6 +373,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               setUser(null);
               setUserData(null);
               setProfileForm({
+                firstName: '',
+                lastName: '',
                 phone: '',
                 address: '',
                 email: '',
@@ -326,6 +413,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               setUserData(userData.user);
               setProfileForm(prev => ({
                 ...prev,
+                firstName: userData.user.firstName || '',
+                lastName: userData.user.lastName || '',
                 phone: userData.user.phone || '',
                 email: userData.user.email || '',
                 designation: userData.user.designation || '',
@@ -454,6 +543,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          firstName: profileForm.firstName,
+          lastName: profileForm.lastName,
           phone: profileForm.phone,
           email: profileForm.email,
           designation: profileForm.designation,
@@ -469,6 +560,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         setMessage({ type: 'success', text: 'Profile updated successfully!' });
         setUserData(prev => prev ? {
           ...prev,
+          firstName: profileForm.firstName,
+          lastName: profileForm.lastName,
           phone: profileForm.phone,
           email: profileForm.email,
           designation: profileForm.designation,
@@ -667,23 +760,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-32px)] max-w-md bg-white rounded-3xl shadow-2xl z-[101] overflow-hidden max-h-[90vh] overflow-y-auto"
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-32px)] max-w-md bg-white rounded-2xl shadow-2xl z-[101] overflow-hidden max-h-[90vh] overflow-y-auto"
             >
               {/* Close Button */}
               <button
                 onClick={() => { setProfileOpen(false); setEditMode(false); setMessage(null); }}
-                className="absolute top-4 right-4 w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 flex items-center justify-center text-slate-500 transition-colors z-10"
+                className="absolute top-4 right-4 w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-400 transition-colors z-10"
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
 
-              {/* Header Background */}
-              <div className="h-20 bg-gradient-to-br from-teal-500 to-emerald-500 relative" />
-
               {/* Content */}
-              <div className="px-6 pb-6 -mt-10">
+              <div className="p-6">
                 {/* Message */}
                 <AnimatePresence>
                   {message && (
@@ -691,10 +781,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className={`mb-4 p-3 rounded-xl text-sm font-medium ${
+                      className={`mb-4 p-3 rounded-lg text-sm font-medium ${
                         message.type === 'success' 
-                          ? 'bg-emerald-50 text-emerald-600' 
-                          : 'bg-red-50 text-red-600'
+                          ? 'bg-green-50 text-green-700 border border-green-200' 
+                          : 'bg-red-50 text-red-700 border border-red-200'
                       }`}
                     >
                       {message.text}
@@ -702,32 +792,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   )}
                 </AnimatePresence>
 
-                {/* Profile Picture */}
-                <div className="flex flex-col items-center mb-6">
-                  <div className="relative mb-4">
-                    <div className="w-24 h-24 rounded-full overflow-hidden bg-slate-100 ring-4 ring-white shadow-lg">
+                {/* Profile Picture & Name */}
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="relative">
+                    <div className="w-16 h-16 rounded-full overflow-hidden bg-slate-100 border-2 border-slate-200">
                       {profileForm.photo || userData?.photo ? (
                         <Image
                           src={profileForm.photo || userData?.photo || ''}
                           alt="Profile"
-                          width={96}
-                          height={96}
+                          width={64}
+                          height={64}
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center">
-                          <svg className="w-12 h-12 text-slate-400" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                          </svg>
+                        <div className="w-full h-full bg-slate-100 flex items-center justify-center">
+                          <span className="text-xl font-semibold text-slate-400">
+                            {(userData?.firstName?.charAt(0) || userData?.username?.charAt(0) || 'U').toUpperCase()}
+                          </span>
                         </div>
                       )}
                     </div>
                     {editMode && (
                       <button
                         onClick={() => fileInputRef.current?.click()}
-                        className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-teal-500 shadow-lg flex items-center justify-center text-white hover:bg-teal-600 transition-colors"
+                        className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-white hover:bg-slate-800 transition-colors"
                       >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                       </button>
@@ -740,125 +830,138 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       className="hidden"
                     />
                   </div>
-                  
-                  {/* Name and Role */}
-                  <h3 className="text-lg font-bold text-slate-800">{userData?.username}</h3>
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold mt-2 ${
-                    userData?.role === 'admin' 
-                      ? 'bg-amber-100 text-amber-700' 
-                      : 'bg-slate-100 text-slate-600'
-                  }`}>
-                    {userData?.role === 'admin' && (
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
-                    )}
-                    {userData?.role === 'admin' ? 'Administrator' : 'User'}
-                  </span>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-slate-800">
+                      {userData?.firstName && userData?.lastName 
+                        ? `${userData.firstName} ${userData.lastName}` 
+                        : userData?.firstName || userData?.lastName || userData?.username}
+                    </h3>
+                    <p className="text-sm text-slate-500">@{userData?.username}</p>
+                    <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium ${
+                      userData?.role === 'admin' 
+                        ? 'bg-slate-800 text-white' 
+                        : 'bg-slate-100 text-slate-600'
+                    }`}>
+                      {userData?.role === 'admin' ? 'Admin' : 'User'}
+                    </span>
+                  </div>
                 </div>
 
                 {editMode ? (
-                  /* Edit Form - Simplified */
+                  /* Edit Form - Minimalistic */
                   <div className="space-y-4">
+                    {/* Name Fields */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1.5">First Name</label>
+                        <input
+                          type="text"
+                          value={profileForm.firstName}
+                          onChange={(e) => setProfileForm(prev => ({ ...prev, firstName: e.target.value }))}
+                          className="w-full px-3 py-2.5 text-sm rounded-lg border border-slate-200 focus:border-slate-400 focus:outline-none transition-colors"
+                          placeholder="First name"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1.5">Last Name</label>
+                        <input
+                          type="text"
+                          value={profileForm.lastName}
+                          onChange={(e) => setProfileForm(prev => ({ ...prev, lastName: e.target.value }))}
+                          className="w-full px-3 py-2.5 text-sm rounded-lg border border-slate-200 focus:border-slate-400 focus:outline-none transition-colors"
+                          placeholder="Last name"
+                        />
+                      </div>
+                    </div>
+
                     <div>
-                      <label className="block text-sm font-medium text-slate-600 mb-2">Mobile Number</label>
+                      <label className="block text-xs font-medium text-slate-500 mb-1.5">Phone</label>
                       <input
                         type="tel"
                         value={profileForm.phone}
                         onChange={(e) => setProfileForm(prev => ({ ...prev, phone: e.target.value }))}
-                        className="w-full px-4 py-3 text-sm rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-teal-400 focus:shadow-[0_0_0_2px_rgba(20,184,166,0.1)] focus:outline-none transition-all"
+                        className="w-full px-3 py-2.5 text-sm rounded-lg border border-slate-200 focus:border-slate-400 focus:outline-none transition-colors"
                         placeholder="+880 1XXX-XXXXXX"
                       />
                     </div>
+
                     <div>
-                      <label className="block text-sm font-medium text-slate-600 mb-2">Address</label>
+                      <label className="block text-xs font-medium text-slate-500 mb-1.5">Email</label>
                       <input
-                        type="text"
-                        value={profileForm.address}
-                        onChange={(e) => setProfileForm(prev => ({ ...prev, address: e.target.value }))}
-                        className="w-full px-4 py-3 text-sm rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-teal-400 focus:shadow-[0_0_0_2px_rgba(20,184,166,0.1)] focus:outline-none transition-all"
-                        placeholder="Your address"
+                        type="email"
+                        value={profileForm.email}
+                        onChange={(e) => setProfileForm(prev => ({ ...prev, email: e.target.value }))}
+                        className="w-full px-3 py-2.5 text-sm rounded-lg border border-slate-200 focus:border-slate-400 focus:outline-none transition-colors"
+                        placeholder="email@example.com"
                       />
                     </div>
 
                     {/* Password Change */}
                     <div className="pt-3 mt-3 border-t border-slate-100">
-                      <p className="text-sm font-medium text-slate-600 mb-3">Change Password</p>
+                      <p className="text-xs font-medium text-slate-500 mb-3">Change Password</p>
                       <div className="space-y-3">
                         <input
                           type="password"
                           value={profileForm.currentPassword}
                           onChange={(e) => setProfileForm(prev => ({ ...prev, currentPassword: e.target.value }))}
-                          className="w-full px-4 py-3 text-sm rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-teal-400 focus:shadow-[0_0_0_2px_rgba(20,184,166,0.1)] focus:outline-none transition-all"
+                          className="w-full px-3 py-2.5 text-sm rounded-lg border border-slate-200 focus:border-slate-400 focus:outline-none transition-colors"
                           placeholder="Current password"
                         />
                         <input
                           type="password"
                           value={profileForm.newPassword}
                           onChange={(e) => setProfileForm(prev => ({ ...prev, newPassword: e.target.value }))}
-                          className="w-full px-4 py-3 text-sm rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-teal-400 focus:shadow-[0_0_0_2px_rgba(20,184,166,0.1)] focus:outline-none transition-all"
+                          className="w-full px-3 py-2.5 text-sm rounded-lg border border-slate-200 focus:border-slate-400 focus:outline-none transition-colors"
                           placeholder="New password"
                         />
                         <input
                           type="password"
                           value={profileForm.confirmPassword}
                           onChange={(e) => setProfileForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                          className="w-full px-4 py-3 text-sm rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-teal-400 focus:shadow-[0_0_0_2px_rgba(20,184,166,0.1)] focus:outline-none transition-all"
+                          className="w-full px-3 py-2.5 text-sm rounded-lg border border-slate-200 focus:border-slate-400 focus:outline-none transition-colors"
                           placeholder="Confirm password"
                         />
                       </div>
                     </div>
 
                     {/* Buttons */}
-                    <div className="flex gap-3 pt-3">
+                    <div className="flex gap-3 pt-2">
                       <button
                         onClick={() => { setEditMode(false); setMessage(null); }}
-                        className="flex-1 py-3 text-sm font-medium rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+                        className="flex-1 py-2.5 text-sm font-medium rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
                       >
                         Cancel
                       </button>
                       <button
                         onClick={handleSaveProfile}
                         disabled={saving}
-                        className="flex-1 py-3 text-sm font-medium rounded-xl bg-teal-500 text-white hover:bg-teal-600 transition-all disabled:opacity-50 shadow-md shadow-teal-500/20"
+                        className="flex-1 py-2.5 text-sm font-medium rounded-lg bg-slate-800 text-white hover:bg-slate-700 transition-colors disabled:opacity-50"
                       >
-                        {saving ? 'Saving...' : 'Save'}
+                        {saving ? 'Saving...' : 'Save Changes'}
                       </button>
                     </div>
                   </div>
                 ) : (
-                  /* View Mode - Simplified */
+                  /* View Mode - Minimalistic */
                   <div className="space-y-3">
-                    {/* Mobile */}
-                    <div className="flex items-center gap-4 p-4 rounded-xl bg-slate-50">
-                      <div className="w-10 h-10 rounded-lg bg-white shadow-sm flex items-center justify-center">
-                        <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
-                        </svg>
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-xs text-slate-400">Mobile</p>
-                        <p className="text-sm font-medium text-slate-700">{userData?.phone || '—'}</p>
-                      </div>
+                    <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
+                      <p className="text-xs text-slate-400 mb-0.5">Phone</p>
+                      <p className="text-sm font-medium text-slate-700">{userData?.phone || '—'}</p>
                     </div>
 
-                    {/* Address */}
-                    <div className="flex items-center gap-4 p-4 rounded-xl bg-slate-50">
-                      <div className="w-10 h-10 rounded-lg bg-white shadow-sm flex items-center justify-center">
-                        <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-                        </svg>
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-xs text-slate-400">Address</p>
-                        <p className="text-sm font-medium text-slate-700">{userData?.address || '—'}</p>
-                      </div>
+                    <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
+                      <p className="text-xs text-slate-400 mb-0.5">Email</p>
+                      <p className="text-sm font-medium text-slate-700">{userData?.email || '—'}</p>
+                    </div>
+
+                    <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
+                      <p className="text-xs text-slate-400 mb-0.5">Designation</p>
+                      <p className="text-sm font-medium text-slate-700">{userData?.designation || '—'}</p>
                     </div>
 
                     <button
                       onClick={() => setEditMode(true)}
-                      className="w-full mt-4 py-3 text-sm font-medium rounded-xl bg-teal-500 text-white hover:bg-teal-600 transition-all shadow-md shadow-teal-500/20"
+                      className="w-full mt-3 py-2.5 text-sm font-medium rounded-lg bg-slate-800 text-white hover:bg-slate-700 transition-colors"
                     >
                       Edit Profile
                     </button>
@@ -870,40 +973,42 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         )}
       </AnimatePresence>
 
-      {/* Mobile Header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-[64px] bg-white/95 backdrop-blur-xl border-b border-slate-100 z-40 safe-area-inset">
+      {/* Mobile Header - Minimal */}
+      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-md border-b border-slate-50 z-40 safe-area-inset">
         <div className="h-full flex items-center justify-between px-4 max-w-screen-xl mx-auto">
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setMobileOpen(true)}
-            className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
+            className="w-9 h-9 rounded-lg bg-slate-50 hover:bg-slate-100 flex items-center justify-center transition-colors"
             aria-label="Open menu"
           >
-            <Bars3Icon className="w-5 h-5 text-slate-600" />
+            <Bars3Icon className="w-[18px] h-[18px] text-slate-600" />
           </motion.button>
           <div className="flex items-center gap-2">
-            <Logo size="sm" animate={false} />
-            <span className="font-bold text-slate-800 text-sm">Clothing BD</span>
+            <motion.div animate={floatAnimation}>
+              <Logo size="sm" animate={false} />
+            </motion.div>
+            <span className="font-bold text-slate-800 text-[13px]">Clothing BD</span>
           </div>
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setProfileOpen(true)}
-            className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-slate-100"
+            className="w-9 h-9 rounded-lg overflow-hidden ring-2 ring-slate-100"
             aria-label="Open profile"
           >
             {userData?.photo ? (
               <Image
                 src={userData.photo}
                 alt="Profile"
-                width={40}
-                height={40}
+                width={36}
+                height={36}
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white text-sm font-semibold">
-                {user?.name?.charAt(0).toUpperCase() || 'U'}
+              <div className="w-full h-full bg-slate-900 flex items-center justify-center text-white text-xs font-semibold">
+                {(userData?.firstName?.charAt(0) || userData?.username?.charAt(0) || 'U').toUpperCase()}
               </div>
             )}
           </motion.button>
@@ -918,12 +1023,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setMobileOpen(false)}
-            className="lg:hidden fixed inset-0 bg-black/40 z-50 backdrop-blur-sm"
+            className="lg:hidden fixed inset-0 bg-black/30 z-50 backdrop-blur-sm"
           />
         )}
       </AnimatePresence>
 
-      {/* Mobile Sidebar - Clean Modern Design */}
+      {/* Mobile Sidebar - Minimal */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.aside
@@ -931,50 +1036,52 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
             transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-            className="lg:hidden fixed top-0 left-0 h-full w-[300px] max-w-[85vw] bg-white shadow-2xl z-50 flex flex-col"
+            className="lg:hidden fixed top-0 left-0 h-full w-[280px] max-w-[80vw] bg-white shadow-xl z-50 flex flex-col"
           >
             {/* Mobile Header */}
-            <div className="h-[68px] flex items-center justify-between px-5 border-b border-slate-100/80 flex-shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="relative">
+            <div className="h-16 flex items-center justify-between px-4 border-b border-slate-50 flex-shrink-0">
+              <div className="flex items-center gap-2.5">
+                <motion.div animate={floatAnimation}>
                   <Logo size="sm" animate={false} />
-                </div>
+                </motion.div>
                 <div className="flex flex-col">
-                  <span className="font-bold text-slate-800 text-[15px] leading-tight">Clothing BD</span>
-                  <span className="text-[10px] text-slate-400 font-medium">Management System</span>
+                  <span className="font-bold text-slate-800 text-sm tracking-tight">Clothing BD</span>
+                  <span className="text-[9px] text-slate-400 uppercase tracking-wider">System</span>
                 </div>
               </div>
-              <button
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => setMobileOpen(false)}
-                className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 flex items-center justify-center transition-colors"
+                className="w-8 h-8 rounded-md bg-slate-50 hover:bg-slate-100 flex items-center justify-center transition-colors"
               >
-                <XMarkIcon className="w-5 h-5 text-slate-600" />
-              </button>
+                <XMarkIcon className="w-4 h-4 text-slate-500" />
+              </motion.button>
             </div>
 
             {/* Mobile Navigation */}
-            <nav className="flex-1 py-5 px-4 overflow-y-auto">
-              <div className="space-y-1">
+            <nav className="flex-1 py-3 px-3 overflow-y-auto">
+              <div className="space-y-0.5">
                 {filteredNav.map((item, index) => {
                   const active = isActive(item.href);
                   const IconComponent = active ? item.iconSolid : item.icon;
                   return (
                     <motion.div
                       key={item.href}
-                      initial={{ opacity: 0, x: -10 }}
+                      initial={{ opacity: 0, x: -8 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.03 }}
+                      transition={{ delay: index * 0.025 }}
                     >
                       <Link
                         href={item.href}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                        className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-all duration-150 ${
                           active 
-                            ? 'bg-teal-500 text-white shadow-md shadow-teal-500/25' 
-                            : 'text-slate-600 hover:bg-slate-100 active:bg-slate-200'
+                            ? 'bg-slate-900 text-white' 
+                            : 'text-slate-500 hover:bg-slate-50 active:bg-slate-100'
                         }`}
                       >
-                        <IconComponent className={`w-5 h-5 flex-shrink-0 ${active ? 'text-white' : ''}`} />
-                        <span className="text-sm font-medium">{item.name}</span>
+                        <IconComponent className={`w-[18px] h-[18px] flex-shrink-0 ${active ? 'text-white' : ''}`} />
+                        <span className="text-[13px] font-medium">{item.name}</span>
                       </Link>
                     </motion.div>
                   );
@@ -983,176 +1090,147 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </nav>
 
             {/* Mobile Footer */}
-            <div className="border-t border-slate-100 p-4 flex-shrink-0">
-              <button
+            <div className="border-t border-slate-50 p-3 flex-shrink-0">
+              <motion.button
+                whileTap={{ scale: 0.97 }}
                 onClick={handleLogout}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-slate-600 hover:text-red-500 hover:bg-red-50 transition-all duration-200 font-medium text-sm"
+                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all duration-150 font-medium text-[13px]"
               >
-                <ArrowRightOnRectangleIcon className="w-5 h-5" />
+                <ArrowRightOnRectangleIcon className="w-[18px] h-[18px]" />
                 <span>Logout</span>
-              </button>
+              </motion.button>
             </div>
           </motion.aside>
         )}
       </AnimatePresence>
 
-      {/* Desktop Sidebar - Clean Modern Design */}
-      <motion.aside
-        initial={false}
-        animate={sidebarOpen ? 'expanded' : 'collapsed'}
-        variants={sidebarVariants}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="hidden lg:flex fixed top-0 left-0 h-full bg-white z-40 flex-col border-r border-slate-200/60 shadow-[4px_0_24px_rgba(0,0,0,0.04)] overflow-hidden"
-      >
+      {/* Desktop Sidebar - Slide-in Overlay */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.aside
+            initial={{ x: -280, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: -280, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+            className="hidden lg:flex fixed top-0 left-0 h-full w-[260px] bg-white z-50 flex-col border-r border-slate-100 shadow-2xl shadow-slate-200/50"
+          >
         {/* Logo Section */}
-        <div className="h-[68px] flex items-center px-4 border-b border-slate-100">
-          <AnimatePresence mode="wait">
-            {sidebarOpen ? (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-                className="flex items-center gap-3 flex-1 min-w-0"
-              >
-                <Logo size="sm" animate={false} />
-                <div className="flex flex-col min-w-0">
-                  <span className="font-bold text-slate-800 text-sm leading-tight truncate">Clothing BD</span>
-                  <span className="text-[10px] text-slate-400">Management System</span>
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="w-full flex justify-center"
-              >
-                <Logo size="sm" animate={false} />
-              </motion.div>
-            )}
-          </AnimatePresence>
-          {sidebarOpen && (
-            <motion.button
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              whileHover={{ scale: 1.1, backgroundColor: '#f1f5f9' }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors flex-shrink-0 ml-2"
-            >
-              <ChevronLeftIcon className="w-4 h-4 text-slate-400" />
-            </motion.button>
-          )}
+        <div className="h-16 flex items-center px-4 border-b border-slate-50">
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            <motion.div animate={floatAnimation}>
+              <Logo size="sm" animate={false} />
+            </motion.div>
+            <div className="flex flex-col min-w-0">
+              <span className="font-bold text-slate-800 text-sm tracking-tight truncate">Clothing BD</span>
+              <span className="text-[9px] text-slate-400 uppercase tracking-wider">System</span>
+            </div>
+          </div>
+          {/* Close button */}
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setSidebarOpen(false)}
+            className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors"
+          >
+            <XMarkIcon className="w-5 h-5 text-slate-400" />
+          </motion.button>
         </div>
 
         {/* Navigation Section */}
-        <nav className="flex-1 py-4 px-3 overflow-y-auto overflow-x-hidden">
-          {sidebarOpen && (
-            <motion.p 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="px-3 mb-3 text-[10px] font-semibold text-slate-400 uppercase tracking-wider"
-            >
-              Menu
-            </motion.p>
-          )}
-          <div className="space-y-1">
+        <nav className="flex-1 py-3 px-2.5 overflow-y-auto overflow-x-hidden">
+          <motion.p 
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="px-3 mb-2 text-[9px] font-semibold text-slate-400 uppercase tracking-widest"
+          >
+            Menu
+          </motion.p>
+          <div className="space-y-0.5">
             {filteredNav.map((item, index) => {
               const active = isActive(item.href);
               const IconComponent = active ? item.iconSolid : item.icon;
               
               return (
-                <div key={item.href} className="relative group">
-                  <Link href={item.href}>
-                    <motion.div
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.04 }}
-                      whileHover={{ x: sidebarOpen ? 2 : 0 }}
-                      whileTap={{ scale: 0.98 }}
-                      className={`relative flex items-center ${sidebarOpen ? 'gap-3 px-4' : 'justify-center px-0'} py-3 rounded-xl transition-all duration-200 ${
-                        active 
-                          ? 'bg-teal-500 text-white shadow-md shadow-teal-500/25' 
-                          : 'text-slate-600 hover:text-slate-800 hover:bg-slate-100'
-                      }`}
-                    >
-                      <IconComponent className={`w-5 h-5 flex-shrink-0 ${active ? 'text-white' : ''}`} />
-                      {sidebarOpen && (
-                        <span className="text-sm font-medium whitespace-nowrap overflow-hidden">
-                          {item.name}
-                        </span>
-                      )}
-                    </motion.div>
-                  </Link>
-
-                  {/* Tooltip for collapsed state */}
-                  {!sidebarOpen && (
-                    <div className="absolute left-full top-1/2 -translate-y-1/2 ml-4 px-3 py-2 bg-slate-800 text-white text-xs font-medium rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 pointer-events-none">
-                      {item.name}
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-2 h-2 bg-slate-800 rotate-45" />
-                    </div>
-                  )}
-                </div>
+                <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)}>
+                  <motion.div
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.02 }}
+                    whileHover={{ x: 3 }}
+                    whileTap={{ scale: 0.98 }}
+                    className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-colors duration-150 ${
+                      active 
+                        ? 'bg-slate-900 text-white' 
+                        : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                    }`}
+                  >
+                    <IconComponent className={`w-[18px] h-[18px] flex-shrink-0 ${active ? 'text-white' : ''}`} />
+                    <span className="text-[13px] font-medium">{item.name}</span>
+                  </motion.div>
+                </Link>
               );
             })}
           </div>
         </nav>
 
-        {/* Bottom Section - Collapse Toggle & Logout */}
-        <div className="border-t border-slate-100 p-3">
-          {/* Expand/Collapse Button - Only when collapsed */}
-          {!sidebarOpen && (
-            <motion.button
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              whileHover={{ scale: 1.05, backgroundColor: '#f1f5f9' }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setSidebarOpen(true)}
-              className="w-full flex justify-center py-2.5 rounded-xl text-slate-500 transition-all duration-200 mb-2"
-            >
-              <ChevronLeftIcon className="w-5 h-5 rotate-180" />
-            </motion.button>
-          )}
-          
+        {/* Bottom Section */}
+        <div className="border-t border-slate-50 p-2.5">
           {/* Logout Button */}
-          <div className="relative group">
-            <motion.button
-              whileHover={{ scale: sidebarOpen ? 1.01 : 1.05 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleLogout}
-              className={`w-full flex items-center ${sidebarOpen ? 'gap-3 px-4' : 'justify-center'} py-3 rounded-xl text-slate-500 hover:text-red-500 hover:bg-red-50 transition-all duration-200`}
-            >
-              <ArrowRightOnRectangleIcon className="w-5 h-5" />
-              {sidebarOpen && <span className="text-sm font-medium">Logout</span>}
-            </motion.button>
-            
-            {/* Tooltip for collapsed state */}
-            {!sidebarOpen && (
-              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-4 px-3 py-2 bg-slate-800 text-white text-xs font-medium rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 pointer-events-none">
-                Logout
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-2 h-2 bg-slate-800 rotate-45" />
-              </div>
-            )}
-          </div>
+          <motion.button
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={handleLogout}
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all duration-150"
+          >
+            <ArrowRightOnRectangleIcon className="w-[18px] h-[18px]" />
+            <span className="text-[13px] font-medium">Logout</span>
+          </motion.button>
         </div>
       </motion.aside>
+        )}
+      </AnimatePresence>
 
-      {/* Desktop Top Bar */}
+      {/* Desktop Top Bar - Minimal */}
       <motion.header
         initial={false}
-        animate={{ marginLeft: sidebarOpen ? 280 : 80 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="hidden lg:flex fixed top-0 right-0 left-0 h-[68px] bg-white/95 backdrop-blur-xl border-b border-slate-100 z-30 items-center justify-between px-8"
+        animate={{ marginLeft: 0 }}
+        className="hidden lg:flex fixed top-0 right-0 left-0 h-16 bg-white/95 backdrop-blur-md border-b border-slate-50 z-30 items-center justify-between px-6"
       >
-        <div className="flex items-center gap-6">
-          {/* Page title */}
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-slate-400">Dashboard</span>
+        <div className="flex items-center gap-3">
+          {/* Modern Sidebar Toggle */}
+          <motion.button
+            whileHover={{ scale: 1.05, backgroundColor: '#f1f5f9' }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="relative w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center transition-all group"
+          >
+            <div className="flex flex-col gap-[5px] items-center justify-center">
+              <motion.span
+                animate={sidebarOpen ? { rotate: 45, y: 6 } : { rotate: 0, y: 0 }}
+                transition={{ duration: 0.2 }}
+                className="w-5 h-[2px] bg-slate-600 rounded-full block"
+              />
+              <motion.span
+                animate={sidebarOpen ? { opacity: 0, x: -10 } : { opacity: 1, x: 0 }}
+                transition={{ duration: 0.2 }}
+                className="w-5 h-[2px] bg-slate-500 rounded-full block"
+              />
+              <motion.span
+                animate={sidebarOpen ? { rotate: -45, y: -6 } : { rotate: 0, y: 0 }}
+                transition={{ duration: 0.2 }}
+                className="w-5 h-[2px] bg-slate-400 rounded-full block"
+              />
+            </div>
+          </motion.button>
+          {/* Breadcrumb */}
+          <div className="flex items-center gap-1.5 text-[13px]">
+            <span className="text-slate-700 font-medium">Dashboard</span>
             {pathname !== '/dashboard' && (
               <>
-                <ChevronLeftIcon className="w-3 h-3 text-slate-300 rotate-180" />
-                <span className="text-slate-700 font-medium capitalize">
+                <svg className="w-3 h-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+                <span className="text-slate-500 capitalize">
                   {pathname.split('/').pop()?.replace(/-/g, ' ')}
                 </span>
               </>
@@ -1160,58 +1238,143 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Search Bar */}
+        <div className="flex items-center gap-2.5">
+          {/* Compact Search */}
           <div className="relative group">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 transition-colors">
-              <MagnifyingGlassIcon className="w-[18px] h-[18px] text-slate-400 group-focus-within:text-teal-500" />
-            </div>
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-600 transition-colors" />
             <input
               type="text"
               placeholder="Search..."
-              className="w-56 pl-11 pr-4 py-2.5 text-sm bg-slate-50 rounded-xl focus:outline-none focus:bg-white focus:shadow-[0_0_0_2px_rgba(20,184,166,0.15)] placeholder:text-slate-400 transition-all duration-200 border-0"
+              className="w-44 pl-9 pr-3 py-2 text-[13px] bg-slate-50 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 placeholder:text-slate-400 transition-all border-0"
             />
-            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden md:inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 bg-white/80 rounded border border-slate-200/50">
-              ⌘K
-            </kbd>
           </div>
 
-          {/* Notification Button */}
-          <motion.button 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="relative w-10 h-10 rounded-xl bg-slate-50 hover:bg-slate-100 flex items-center justify-center transition-colors"
-          >
-            <BellIcon className="w-5 h-5 text-slate-500" />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
-          </motion.button>
+          {/* Notification - Admin Only */}
+          {userData?.role === 'admin' && (
+            <div className="relative">
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setNotificationOpen(!notificationOpen)}
+                className="relative w-9 h-9 rounded-lg bg-slate-50 hover:bg-slate-100 flex items-center justify-center transition-colors"
+              >
+                <BellIcon className="w-[18px] h-[18px] text-slate-500" />
+                {unreadCount > 0 && (
+                  <motion.span 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center" 
+                  >
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </motion.span>
+                )}
+              </motion.button>
+
+              {/* Notification Dropdown */}
+              <AnimatePresence>
+                {notificationOpen && (
+                  <>
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="fixed inset-0 z-40"
+                      onClick={() => setNotificationOpen(false)}
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute right-0 top-12 w-80 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden"
+                    >
+                      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+                        <h3 className="text-sm font-semibold text-slate-800">Notifications</h3>
+                        {unreadCount > 0 && (
+                          <button
+                            onClick={markAllAsRead}
+                            className="text-xs text-slate-500 hover:text-slate-700"
+                          >
+                            Mark all read
+                          </button>
+                        )}
+                      </div>
+                      <div className="max-h-80 overflow-y-auto">
+                        {notifications.length === 0 ? (
+                          <div className="py-8 text-center">
+                            <BellIcon className="w-8 h-8 mx-auto mb-2 text-slate-200" />
+                            <p className="text-sm text-slate-400">No notifications</p>
+                          </div>
+                        ) : (
+                          notifications.slice(0, 10).map((notif) => (
+                            <div
+                              key={notif.id}
+                              onClick={() => !notif.read && markAsRead(notif.id)}
+                              className={`px-4 py-3 border-b border-slate-50 cursor-pointer transition-colors ${
+                                notif.read ? 'bg-white' : 'bg-amber-50/50'
+                              } hover:bg-slate-50`}
+                            >
+                              <div className="flex items-start gap-2">
+                                <div className={`w-2 h-2 mt-1.5 rounded-full flex-shrink-0 ${
+                                  notif.type === 'warning' ? 'bg-amber-500' :
+                                  notif.type === 'error' ? 'bg-red-500' :
+                                  notif.type === 'success' ? 'bg-emerald-500' : 'bg-blue-500'
+                                }`} />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-medium text-slate-700">{notif.title}</p>
+                                  <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{notif.message}</p>
+                                  <div className="flex items-center gap-2 mt-1.5">
+                                    <span className="text-[10px] text-slate-400">
+                                      {new Date(notif.createdAt).toLocaleString('en-BD', { 
+                                        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' 
+                                      })}
+                                    </span>
+                                    <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded">
+                                      {notif.actionBy}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
 
           {/* Divider */}
-          <div className="w-px h-8 bg-slate-200" />
+          <div className="w-px h-6 bg-slate-100" />
 
-          {/* Profile Button */}
+          {/* Profile Button - Minimal */}
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => setProfileOpen(true)}
-            className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-50 transition-all"
+            className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-slate-50 transition-all"
           >
-            <div className="text-right">
-              <p className="text-sm font-medium text-slate-700">{userData?.username}</p>
-              <p className="text-[11px] text-slate-400 capitalize">{userData?.designation || userData?.role}</p>
+            <div className="text-right hidden sm:block">
+              <p className="text-[13px] font-medium text-slate-700">
+                {userData?.firstName && userData?.lastName 
+                  ? `${userData.firstName} ${userData.lastName}` 
+                  : userData?.firstName || userData?.lastName || userData?.username}
+              </p>
+              <p className="text-[10px] text-slate-400 capitalize">{userData?.designation || userData?.role}</p>
             </div>
-            <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-slate-100">
+            <div className="w-9 h-9 rounded-lg overflow-hidden ring-2 ring-slate-100">
               {userData?.photo ? (
                 <Image
                   src={userData.photo}
                   alt="Profile"
-                  width={40}
-                  height={40}
+                  width={36}
+                  height={36}
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white text-sm font-semibold">
-                  {user?.name?.charAt(0).toUpperCase() || 'U'}
+                <div className="w-full h-full bg-slate-900 flex items-center justify-center text-white text-xs font-semibold">
+                  {(userData?.firstName?.charAt(0) || userData?.username?.charAt(0) || 'U').toUpperCase()}
                 </div>
               )}
             </div>
@@ -1222,45 +1385,64 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Main Content Area */}
       <motion.main
         initial={false}
-        animate={{ marginLeft: sidebarOpen ? 280 : 80 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="hidden lg:flex min-h-screen bg-slate-50 flex-col"
+        animate={{ marginLeft: 0 }}
+        className="hidden lg:flex min-h-screen bg-slate-50/50 flex-col"
       >
-        <div className="flex-1 pt-[68px]">
-          <div className="p-6 lg:p-8 max-w-[1600px] mx-auto">
+        {/* Overlay to close sidebar when clicking outside */}
+        <AnimatePresence>
+          {sidebarOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              onClick={() => setSidebarOpen(false)}
+              className="fixed inset-0 bg-slate-900/10 z-35 cursor-pointer"
+            />
+          )}
+        </AnimatePresence>
+        
+        <div className="flex-1 pt-16">
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="p-5 lg:p-6 max-w-[1536px] mx-auto"
+          >
             {children}
-          </div>
+          </motion.div>
         </div>
         
-        {/* Footer Credit - Desktop */}
-        <footer className="border-t border-slate-100 bg-white py-4 px-6">
-          <div className="flex items-center justify-between max-w-[1600px] mx-auto">
-            <p className="text-sm text-slate-500">
-              © 2026 <span className="font-medium text-slate-700">Clothing BD</span>
+        {/* Footer - Minimal */}
+        <footer className="border-t border-slate-100 bg-white py-3 px-6">
+          <div className="flex items-center justify-between max-w-[1536px] mx-auto">
+            <p className="text-xs text-slate-400">
+              © 2026 <span className="font-medium text-slate-600">Clothing BD</span>
             </p>
-            <p className="text-sm text-slate-500">
-              Developed by <span className="font-semibold text-teal-600">MEHEDI HASAN</span>
+            <p className="text-xs text-slate-400">
+              by <span className="font-semibold text-slate-600">MEHEDI HASAN</span>
             </p>
           </div>
         </footer>
       </motion.main>
 
       {/* Mobile Main Content Area */}
-      <main className="lg:hidden min-h-screen bg-slate-50 flex flex-col">
-        <div className="flex-1 pt-[64px]">
-          <div className="p-4 sm:p-5">
+      <main className="lg:hidden min-h-screen bg-slate-50/50 flex flex-col">
+        <div className="flex-1 pt-16">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="p-4"
+          >
             {children}
-          </div>
+          </motion.div>
         </div>
         
-        {/* Footer Credit - Mobile */}
-        <footer className="border-t border-slate-100 bg-white py-4 px-4">
-          <div className="text-center space-y-1">
-            <p className="text-xs text-slate-500">
-              © 2026 <span className="font-medium text-slate-700">Clothing BD</span>
-            </p>
-            <p className="text-xs text-slate-400">
-              by <span className="font-semibold text-teal-600">MEHEDI HASAN</span>
+        {/* Footer - Mobile */}
+        <footer className="border-t border-slate-100 bg-white py-3 px-4">
+          <div className="text-center">
+            <p className="text-[10px] text-slate-400">
+              © 2026 Clothing BD • by <span className="font-semibold text-slate-600">MEHEDI HASAN</span>
             </p>
           </div>
         </footer>

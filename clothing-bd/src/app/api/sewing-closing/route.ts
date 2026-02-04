@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchSewingClosingReportData } from '@/lib/sewing-closing';
 import { getSession } from '@/lib/session';
+import { updateSewingClosingStats } from '@/lib/stats';
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,10 +29,20 @@ export async function POST(request: NextRequest) {
     const data = await fetchSewingClosingReportData(refNo.trim());
 
     if (!data || !data.success || data.data.length === 0) {
+      // Track failed attempt
+      if (session.username) {
+        await updateSewingClosingStats(session.username, refNo.trim().toUpperCase(), 'failed');
+      }
+      
       return NextResponse.json(
         { success: false, message: 'No data found for this booking' },
         { status: 404 }
       );
+    }
+
+    // Track successful report generation
+    if (session.username) {
+      await updateSewingClosingStats(session.username, refNo.trim().toUpperCase(), 'success');
     }
 
     console.log('[Sewing Closing API] Successfully fetched data for:', refNo.trim());
@@ -44,6 +55,16 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('[Sewing Closing API] Error:', error);
+    
+    // Track failed attempt
+    const session = await getSession();
+    if (session?.username) {
+      try {
+        await updateSewingClosingStats(session.username, 'Unknown', 'failed');
+      } catch (e) {
+        console.error('Failed to log sewing closing stats:', e);
+      }
+    }
     
     return NextResponse.json(
       { success: false, message: 'Server error. Please try again.' },

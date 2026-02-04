@@ -6,45 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChartBarIcon,
   MagnifyingGlassIcon,
-  ExclamationCircleIcon,
 } from '@heroicons/react/24/outline';
-
-interface SizeData {
-  size: string;
-  actual: number;
-  qty3: number;
-  cuttingQc: number;
-  inputQty: number;
-  balance: number;
-  shortPlus: number;
-  percentage: number;
-}
-
-interface BlockData {
-  color: string;
-  style: string;
-  buyer: string;
-  sizes: SizeData[];
-  totals: {
-    tot3: number;
-    totAct: number;
-    totCut: number;
-    totInp: number;
-    totBal: number;
-    totSp: number;
-    totPct: number;
-  };
-}
-
-interface ReportData {
-  success: boolean;
-  data: BlockData[];
-  refNo: string;
-  meta: {
-    buyer: string;
-    style: string;
-  };
-}
 
 export default function ClosingReportPage() {
   const [refNo, setRefNo] = useState('');
@@ -69,7 +31,7 @@ export default function ClosingReportPage() {
         body: JSON.stringify({ refNo: refNo.trim() }),
       });
 
-      const data: ReportData = await response.json();
+      const data = await response.json();
 
       if (data.success) {
         sessionStorage.setItem('closingReportData', JSON.stringify(data));
@@ -85,154 +47,126 @@ export default function ClosingReportPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
-      {/* Loading Overlay */}
+    <div className="max-w-xl mx-auto">
       <AnimatePresence>
         {isLoading && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-white/90 backdrop-blur-sm"
           >
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="flex flex-col items-center gap-6"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="flex flex-col items-center gap-4"
             >
-              {/* Modern Spinner */}
-              <div className="relative w-12 h-12">
-                <motion.div
-                  className="absolute inset-0 rounded-full border-[3px] border-slate-200"
-                />
-                <motion.div
-                  className="absolute inset-0 rounded-full border-[3px] border-transparent border-t-teal-500"
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                />
-                <motion.div
-                  className="absolute inset-1 rounded-full border-[3px] border-transparent border-b-teal-300"
-                  animate={{ rotate: -360 }}
-                  transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
-                />
+              <div className="flex items-center gap-1">
+                {[0, 1, 2, 3].map((i) => (
+                  <motion.div
+                    key={i}
+                    className="w-2 h-8 bg-slate-800 rounded-full"
+                    animate={{ scaleY: [0.4, 1, 0.4], opacity: [0.4, 1, 0.4] }}
+                    transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.15, ease: 'easeInOut' }}
+                  />
+                ))}
               </div>
-              <p className="text-sm font-medium text-slate-500">Generating Report...</p>
+              <p className="text-sm font-medium text-slate-600">Generating Report...</p>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Page Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
+        className="mb-6"
       >
-        <div className="flex items-center gap-4 mb-3">
-          <motion.div 
-            whileHover={{ scale: 1.05, rotate: 5 }}
-            className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-200"
-          >
-            <ChartBarIcon className="w-6 h-6 text-white" />
-          </motion.div>
+        <div className="flex items-center gap-3 mb-1">
+          <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center">
+            <ChartBarIcon className="w-5 h-5 text-slate-600" />
+          </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">Closing Report</h1>
-            <p className="text-sm text-slate-500">Generate production closing report from ERP</p>
+            <h1 className="text-xl font-bold text-slate-800">Closing Report</h1>
+            <p className="text-xs text-slate-500">Generate production closing report from ERP</p>
           </div>
         </div>
       </motion.div>
 
-      {/* Main Form Card */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="bg-white rounded-xl border border-slate-200 shadow-sm"
+        transition={{ delay: 0.05 }}
+        className="bg-white rounded-lg border border-slate-200"
       >
-        <div className="p-6 border-b border-slate-100">
-          <h2 className="text-lg font-semibold text-slate-800">Search Booking</h2>
-          <p className="text-sm text-slate-500 mt-1">Enter your booking reference number to generate the report</p>
+        <div className="px-4 py-3 border-b border-slate-100">
+          <h2 className="text-sm font-semibold text-slate-800">Search Booking</h2>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6">
-          {/* Input Field */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+        <form onSubmit={handleSubmit} className="p-4">
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-slate-600 mb-1.5">
               Booking Number <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={refNo}
               onChange={(e) => { setRefNo(e.target.value.toUpperCase()); setError(''); }}
-              placeholder="Enter booking number (e.g., BD-24-0001)"
-              className="w-full h-12 px-4 text-base bg-white border-2 border-slate-200 rounded-lg focus:outline-none focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 transition-all placeholder:text-slate-400"
+              placeholder="e.g., BD-24-0001"
+              className="w-full h-10 px-3 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 focus:bg-white transition-all placeholder:text-slate-400"
             />
           </div>
 
-          {/* Error Message */}
           <AnimatePresence>
             {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
+              <motion.p
+                initial={{ opacity: 0, y: -5 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3"
+                exit={{ opacity: 0, y: -5 }}
+                className="mb-4 text-sm text-red-600"
               >
-                <ExclamationCircleIcon className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-red-800">{error}</p>
-                  <p className="text-xs text-red-600 mt-0.5">Please verify the booking number and try again</p>
-                </div>
-              </motion.div>
+                {error}
+              </motion.p>
             )}
           </AnimatePresence>
 
-          {/* Submit Button */}
           <motion.button
             type="submit"
             disabled={isLoading || !refNo.trim()}
-            whileHover={!isLoading && refNo.trim() ? { scale: 1.01 } : {}}
-            whileTap={!isLoading && refNo.trim() ? { scale: 0.99 } : {}}
-            className={`w-full h-12 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all ${
+            whileTap={{ scale: 0.98 }}
+            className={`w-full h-10 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-all ${
               isLoading || !refNo.trim()
                 ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                : 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:shadow-lg hover:shadow-emerald-200'
+                : 'bg-slate-800 text-white hover:bg-slate-700'
             }`}
           >
-            <ChartBarIcon className="w-5 h-5" />
+            <MagnifyingGlassIcon className="w-4 h-4" />
             Generate Report
           </motion.button>
         </form>
       </motion.div>
 
-      {/* Info Card */}
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="mt-6 bg-gradient-to-br from-slate-50 to-white rounded-xl border border-slate-200 p-6"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.1 }}
+        className="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-lg"
       >
-        <h3 className="text-sm font-semibold text-slate-700 mb-4">How it works</h3>
-        <div className="space-y-3">
+        <h3 className="text-xs font-semibold text-slate-700 mb-3">How it works</h3>
+        <div className="space-y-2">
           {[
-            { step: 1, text: 'Enter your booking reference number' },
-            { step: 2, text: 'System fetches data from ERP' },
-            { step: 3, text: 'Report generates with size breakdown' },
-            { step: 4, text: 'View, print or export the report' },
-          ].map((item) => (
-            <motion.div 
-              key={item.step} 
-              className="flex items-center gap-3"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 + item.step * 0.1 }}
-            >
-              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-teal-500 to-emerald-600 text-white flex items-center justify-center text-xs font-bold shadow-sm">
-                {item.step}
+            'Enter booking reference number',
+            'System fetches data from ERP',
+            'Report generates with size breakdown',
+            'View, print or export',
+          ].map((text, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-[10px] font-bold">
+                {i + 1}
               </div>
-              <span className="text-sm text-slate-600">{item.text}</span>
-            </motion.div>
+              <span className="text-xs text-slate-600">{text}</span>
+            </div>
           ))}
         </div>
       </motion.div>

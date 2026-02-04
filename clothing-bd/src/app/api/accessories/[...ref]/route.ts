@@ -11,9 +11,49 @@ import {
 } from '@/lib/accessories';
 import { fetchClosingReportData } from '@/lib/closing';
 import { getSession } from '@/lib/session';
+import { getCollection, COLLECTIONS } from '@/lib/mongodb';
 
 interface RouteParams {
   params: Promise<{ ref: string[] }>;
+}
+
+// Helper function to send notification when moderator edits/deletes
+async function sendModeratorNotification(actionBy: string, action: 'edit' | 'delete', bookingRef: string, message: string) {
+  try {
+    const collection = await getCollection(COLLECTIONS.NOTIFICATIONS);
+    
+    // Get existing notifications or create new record
+    const record = await collection.findOne({ type: 'admin_notifications' });
+    const notifications = record?.notifications || [];
+    
+    // Create new notification
+    const newNotification = {
+      id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      type: action === 'delete' ? 'warning' : 'info',
+      title: action === 'delete' ? 'Accessories Deleted' : 'Accessories Updated',
+      message,
+      action,
+      actionBy,
+      actionByRole: 'moderator',
+      createdAt: new Date().toISOString(),
+      read: false,
+      bookingRef,
+    };
+    
+    // Add to beginning of array
+    notifications.unshift(newNotification);
+    
+    // Keep only last 50 notifications
+    const trimmedNotifications = notifications.slice(0, 50);
+    
+    await collection.updateOne(
+      { type: 'admin_notifications' },
+      { $set: { notifications: trimmedNotifications, updatedAt: new Date().toISOString() } },
+      { upsert: true }
+    );
+  } catch (error) {
+    console.error('Failed to send moderator notification:', error);
+  }
 }
 
 // GET - Get single booking details
@@ -39,8 +79,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getSession();
     
-    if (!session || session.role !== 'admin') {
-      return NextResponse.json({ success: false, message: 'Admin access required' }, { status: 403 });
+    // Allow admin and moderator
+    if (!session || (session.role !== 'admin' && session.role !== 'moderator')) {
+      return NextResponse.json({ success: false, message: 'Admin or Moderator access required' }, { status: 403 });
     }
 
     const { ref: refArr } = await params;
@@ -64,6 +105,12 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       }
 
       await updateAccessoriesStats(session.username, ref.toUpperCase(), 'Entry Deleted');
+      
+      // Send notification if moderator
+      if (session.role === 'moderator') {
+        await sendModeratorNotification(session.username, 'delete', ref.toUpperCase(), `Challan entry deleted from booking ${ref.toUpperCase()}`);
+      }
+      
       return NextResponse.json({ success: true, booking, message: 'Challan deleted' });
     }
     
@@ -75,6 +122,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     await updateAccessoriesStats(session.username, ref.toUpperCase(), 'Deleted');
+    
+    // Send notification if moderator
+    if (session.role === 'moderator') {
+      await sendModeratorNotification(session.username, 'delete', ref.toUpperCase(), `Entire booking ${ref.toUpperCase()} deleted`);
+    }
 
     return NextResponse.json({ success: true, message: 'Booking deleted' });
   } catch (error) {
@@ -191,6 +243,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     await updateAccessoriesStats(session.username, ref.toUpperCase(), 'Entry Updated');
+    
+    // Send notification if moderator
+    if (session.role === 'moderator') {
+      await sendModeratorNotification(session.username, 'edit', ref.toUpperCase(), `Challan entry updated in booking ${ref.toUpperCase()}`);
+    }
 
     return NextResponse.json({ success: true, booking, message: 'Challan updated' });
   } catch (error) {

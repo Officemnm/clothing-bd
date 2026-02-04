@@ -6,8 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   CubeIcon,
   MagnifyingGlassIcon,
-  InboxIcon,
   ArrowRightIcon,
+  InboxIcon,
 } from '@heroicons/react/24/outline';
 
 interface BookingSummary {
@@ -90,25 +90,25 @@ export default function AccessoriesPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-white/90 backdrop-blur-sm"
           >
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="flex flex-col items-center gap-5"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="flex flex-col items-center gap-4"
             >
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 {[0, 1, 2, 3].map((i) => (
                   <motion.div
                     key={i}
-                    className="w-3 h-3 rounded-full bg-amber-500"
-                    animate={{ y: [0, -12, 0], opacity: [0.4, 1, 0.4] }}
-                    transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.1, ease: 'easeInOut' }}
+                    className="w-2 h-8 bg-slate-800 rounded-full"
+                    animate={{ scaleY: [0.4, 1, 0.4], opacity: [0.4, 1, 0.4] }}
+                    transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.15, ease: 'easeInOut' }}
                   />
                 ))}
               </div>
-              <p className="text-sm font-medium text-slate-500">Loading Accessories...</p>
+              <p className="text-sm font-medium text-slate-600">Loading...</p>
             </motion.div>
           </motion.div>
         )}
@@ -118,18 +118,15 @@ export default function AccessoriesPage() {
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
+        className="mb-6"
       >
-        <div className="flex items-center gap-4 mb-3">
-          <motion.div 
-            whileHover={{ scale: 1.05, rotate: 5 }}
-            className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-200"
-          >
-            <CubeIcon className="w-6 h-6 text-white" />
-          </motion.div>
+        <div className="flex items-center gap-3 mb-1">
+          <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center">
+            <CubeIcon className="w-5 h-5 text-slate-600" />
+          </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">Accessories</h1>
-            <p className="text-sm text-slate-500">Track challan and accessories data by booking reference</p>
+            <h1 className="text-xl font-bold text-slate-800">Accessories</h1>
+            <p className="text-xs text-slate-500">Track challan and accessories data</p>
           </div>
         </div>
       </motion.div>
@@ -138,56 +135,50 @@ export default function AccessoriesPage() {
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="bg-white rounded-xl border border-slate-200 shadow-sm mb-6"
+        transition={{ delay: 0.05 }}
+        className="bg-white rounded-lg border border-slate-200 mb-5"
       >
-        <div className="p-6 border-b border-slate-100">
-          <h2 className="text-lg font-semibold text-slate-800">Quick Search</h2>
-          <p className="text-sm text-slate-500 mt-1">Enter booking reference to view accessories details</p>
+        <div className="px-4 py-3 border-b border-slate-100">
+          <h2 className="text-sm font-semibold text-slate-800">Quick Search</h2>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6">
-          <div className="flex flex-col sm:flex-row gap-4">
+        <form onSubmit={handleSubmit} className="p-4">
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1 relative">
-              <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
                 value={refNo}
                 onChange={(e) => { setRefNo(e.target.value.toUpperCase()); setError(''); }}
-                placeholder="Enter booking number (e.g., BD-24-0001)"
-                className="w-full h-12 pl-12 pr-4 text-base bg-white border-2 border-slate-200 rounded-xl focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 transition-all placeholder:text-slate-400"
+                placeholder="Enter booking number"
+                className="w-full h-10 pl-9 pr-4 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 focus:bg-white transition-all placeholder:text-slate-400"
               />
             </div>
             <motion.button
               type="submit"
               disabled={isLoading || !refNo.trim()}
-              whileHover={!isLoading && refNo.trim() ? { scale: 1.02 } : {}}
-              whileTap={!isLoading && refNo.trim() ? { scale: 0.98 } : {}}
-              className={`h-12 px-8 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all ${
+              whileTap={{ scale: 0.98 }}
+              className={`h-10 px-5 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-all ${
                 isLoading || !refNo.trim()
                   ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:shadow-lg hover:shadow-amber-200'
+                  : 'bg-slate-800 text-white hover:bg-slate-700'
               }`}
             >
-              <MagnifyingGlassIcon className="w-5 h-5" />
+              <MagnifyingGlassIcon className="w-4 h-4" />
               Search
             </motion.button>
           </div>
 
-          {/* Error Message */}
           <AnimatePresence>
             {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
+              <motion.p
+                initial={{ opacity: 0, y: -5 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3"
+                exit={{ opacity: 0, y: -5 }}
+                className="mt-3 text-sm text-red-600"
               >
-                <svg className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="text-sm font-medium text-red-800">{error}</span>
-              </motion.div>
+                {error}
+              </motion.p>
             )}
           </AnimatePresence>
         </form>
@@ -197,64 +188,60 @@ export default function AccessoriesPage() {
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"
+        transition={{ delay: 0.1 }}
+        className="bg-white rounded-lg border border-slate-200 overflow-hidden"
       >
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+        <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-slate-800">Recent Bookings</h3>
-            <p className="text-sm text-slate-500 mt-0.5">{bookings.length} bookings available</p>
+            <h3 className="text-sm font-semibold text-slate-800">Recent Bookings</h3>
+            <p className="text-xs text-slate-500">{bookings.length} available</p>
           </div>
           <div className="relative">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
             <input
               type="text"
-              placeholder="Filter bookings..."
+              placeholder="Filter..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/10 transition-all"
+              className="pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-md focus:outline-none focus:border-slate-300 transition-all w-32"
             />
           </div>
         </div>
 
         {isLoadingList ? (
-          <div className="py-12 text-center">
-            <div className="flex items-center justify-center gap-1.5 mb-4">
-              {[0, 1, 2, 3].map((i) => (
+          <div className="py-10 text-center">
+            <div className="flex items-center justify-center gap-1 mb-3">
+              {[0, 1, 2].map((i) => (
                 <motion.div
                   key={i}
-                  className="w-2.5 h-2.5 rounded-full bg-amber-500"
-                  animate={{ y: [0, -10, 0], opacity: [0.4, 1, 0.4] }}
-                  transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.1, ease: 'easeInOut' }}
+                  className="w-1.5 h-6 bg-slate-300 rounded-full"
+                  animate={{ scaleY: [0.4, 1, 0.4] }}
+                  transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.1 }}
                 />
               ))}
             </div>
-            <p className="text-sm text-slate-500">Loading bookings...</p>
+            <p className="text-xs text-slate-500">Loading bookings...</p>
           </div>
         ) : filteredBookings.length === 0 ? (
-          <div className="p-12 text-center">
-            <div className="w-14 h-14 mx-auto mb-4 rounded-lg bg-slate-100 flex items-center justify-center">
-              <svg className="w-7 h-7 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-              </svg>
+          <div className="py-10 text-center">
+            <div className="w-10 h-10 mx-auto mb-3 rounded-lg bg-slate-100 flex items-center justify-center">
+              <InboxIcon className="w-5 h-5 text-slate-400" />
             </div>
-            <p className="text-slate-600 font-medium">No bookings found</p>
-            <p className="text-sm text-slate-400 mt-1">Use the search above to find a booking</p>
+            <p className="text-sm text-slate-600">No bookings found</p>
+            <p className="text-xs text-slate-400 mt-0.5">Use search to find a booking</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full text-sm">
               <thead>
-                <tr className="bg-slate-50">
-                  <th className="text-left text-xs font-semibold text-slate-500 uppercase py-3 px-6">Reference</th>
-                  <th className="text-left text-xs font-semibold text-slate-500 uppercase py-3 px-6">Buyer</th>
-                  <th className="text-left text-xs font-semibold text-slate-500 uppercase py-3 px-6">Style</th>
-                  <th className="text-left text-xs font-semibold text-slate-500 uppercase py-3 px-6">Challans</th>
-                  <th className="text-left text-xs font-semibold text-slate-500 uppercase py-3 px-6">Total Qty</th>
-                  <th className="text-left text-xs font-semibold text-slate-500 uppercase py-3 px-6">Last Updated</th>
-                  <th className="text-right text-xs font-semibold text-slate-500 uppercase py-3 px-6">Action</th>
+                <tr className="bg-slate-50 text-left">
+                  <th className="text-xs font-medium text-slate-500 py-2.5 px-4">Reference</th>
+                  <th className="text-xs font-medium text-slate-500 py-2.5 px-4">Buyer</th>
+                  <th className="text-xs font-medium text-slate-500 py-2.5 px-4">Style</th>
+                  <th className="text-xs font-medium text-slate-500 py-2.5 px-4">Challans</th>
+                  <th className="text-xs font-medium text-slate-500 py-2.5 px-4">Qty</th>
+                  <th className="text-xs font-medium text-slate-500 py-2.5 px-4">Updated</th>
+                  <th className="text-xs font-medium text-slate-500 py-2.5 px-4 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -266,32 +253,25 @@ export default function AccessoriesPage() {
                     transition={{ delay: index * 0.02 }}
                     className="hover:bg-slate-50 transition-colors"
                   >
-                    <td className="py-4 px-6">
+                    <td className="py-3 px-4">
                       <span className="font-semibold text-slate-800">{booking.ref}</span>
                     </td>
-                    <td className="py-4 px-6">
-                      <span className="text-sm text-slate-600">{booking.buyer}</span>
-                    </td>
-                    <td className="py-4 px-6">
-                      <span className="text-sm text-slate-600">{booking.style}</span>
-                    </td>
-                    <td className="py-4 px-6">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium bg-amber-100 text-amber-700">
-                        {booking.challanCount} challans
+                    <td className="py-3 px-4 text-slate-600">{booking.buyer}</td>
+                    <td className="py-3 px-4 text-slate-600">{booking.style}</td>
+                    <td className="py-3 px-4">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700">
+                        {booking.challanCount}
                       </span>
                     </td>
-                    <td className="py-4 px-6">
-                      <span className="text-sm font-semibold text-slate-800">{booking.totalQty.toLocaleString()}</span>
-                    </td>
-                    <td className="py-4 px-6">
-                      <span className="text-sm text-slate-500">{booking.lastUpdated}</span>
-                    </td>
-                    <td className="py-4 px-6 text-right">
+                    <td className="py-3 px-4 font-medium text-slate-800">{booking.totalQty.toLocaleString()}</td>
+                    <td className="py-3 px-4 text-slate-500 text-xs">{booking.lastUpdated}</td>
+                    <td className="py-3 px-4 text-right">
                       <button
                         onClick={() => router.push(`/dashboard/accessories/${booking.ref}`)}
-                        className="px-4 py-2 text-sm font-medium text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors"
                       >
-                        View Details
+                        View
+                        <ArrowRightIcon className="w-3 h-3" />
                       </button>
                     </td>
                   </motion.tr>

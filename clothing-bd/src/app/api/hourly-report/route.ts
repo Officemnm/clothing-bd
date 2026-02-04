@@ -3,6 +3,7 @@ import { fetchHourlyReport, getTodayDateFormatted } from '@/lib/hourly-report';
 import { getAllSnapshotsForDate } from '@/lib/hourly-snapshot';
 import { fetchFactoryReport } from '@/lib/factory-report';
 import { getSession } from '@/lib/session';
+import { updateHourlyStats } from '@/lib/stats';
 
 /**
  * GET /api/hourly-report
@@ -39,6 +40,13 @@ export async function GET(request: NextRequest) {
     // Fetch the hourly report with snapshots
     const result = await fetchHourlyReport(date, line, snapshots);
 
+    // Track successful report generation
+    if (result.success && session.username) {
+      await updateHourlyStats(session.username, date, 'success', line);
+    } else if (!result.success && session.username) {
+      await updateHourlyStats(session.username, date, 'failed', line);
+    }
+
     // Add snapshot info and factory summary to response
     return NextResponse.json({
       ...result,
@@ -55,6 +63,17 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Hourly report API error:', error);
+    
+    // Track failed attempt
+    const session = await getSession();
+    if (session?.username) {
+      try {
+        await updateHourlyStats(session.username, 'Unknown', 'failed');
+      } catch (e) {
+        console.error('Failed to log hourly stats:', e);
+      }
+    }
+    
     return NextResponse.json(
       { 
         success: false, 
@@ -98,6 +117,13 @@ export async function POST(request: NextRequest) {
     // Fetch the report with snapshots
     const result = await fetchHourlyReport(date, line || undefined, snapshots);
 
+    // Track successful report generation
+    if (result.success && session.username) {
+      await updateHourlyStats(session.username, date, 'success', line);
+    } else if (!result.success && session.username) {
+      await updateHourlyStats(session.username, date, 'failed', line);
+    }
+
     // Add snapshot info to response
     return NextResponse.json({
       ...result,
@@ -110,6 +136,17 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Hourly report API error:', error);
+    
+    // Track failed attempt
+    const session = await getSession();
+    if (session?.username) {
+      try {
+        await updateHourlyStats(session.username, 'Unknown', 'failed');
+      } catch (e) {
+        console.error('Failed to log hourly stats:', e);
+      }
+    }
+    
     return NextResponse.json(
       { 
         success: false, 

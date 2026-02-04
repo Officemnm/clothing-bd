@@ -49,4 +49,5 @@ export const COLLECTIONS = {
   STATS: 'stats',
   ACCESSORIES: 'accessories',
   HOURLY_SNAPSHOTS: 'hourly_snapshots',
+  NOTIFICATIONS: 'notifications',
 } as const;

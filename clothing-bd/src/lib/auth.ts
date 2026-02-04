@@ -3,7 +3,7 @@ import { getCollection, COLLECTIONS } from './mongodb';
 export interface User {
   username: string;
   password: string;
-  role: 'admin' | 'user';
+  role: 'admin' | 'moderator' | 'user';
   permissions: string[];
   created_at: string;
   last_login: string;
@@ -12,6 +12,8 @@ export interface User {
   photo?: string;
   email?: string;
   designation?: string;
+  firstName?: string;
+  lastName?: string;
 }
 
 export interface UsersDocument {
@@ -75,7 +77,8 @@ export async function updateLastLogin(username: string): Promise<void> {
 export async function createUser(
   username: string,
   password: string,
-  permissions: string[]
+  permissions: string[],
+  role: 'moderator' | 'user' = 'user'
 ): Promise<boolean> {
   const collection = await getCollection(COLLECTIONS.USERS);
   const users = await getUsers();
@@ -90,7 +93,7 @@ export async function createUser(
   users[username] = {
     username,
     password,
-    role: 'user',
+    role,
     permissions,
     created_at: formattedDate,
     last_login: 'Never',
@@ -130,7 +133,7 @@ export async function updateUser(
   updates: {
     password?: string;
     permissions?: string[];
-    role?: 'admin' | 'user';
+    role?: 'admin' | 'moderator' | 'user';
   }
 ): Promise<boolean> {
   const collection = await getCollection(COLLECTIONS.USERS);
@@ -140,14 +143,22 @@ export async function updateUser(
     return false;
   }
   
-  if (updates.password !== undefined) {
-    users[username].password = updates.password;
-  }
-  if (updates.permissions !== undefined) {
-    users[username].permissions = updates.permissions;
-  }
-  if (updates.role !== undefined && users[username].role !== 'admin') {
-    users[username].role = updates.role;
+  // Never update the main admin's role
+  if (users[username].role === 'admin') {
+    // Only allow password update for admin
+    if (updates.password !== undefined) {
+      users[username].password = updates.password;
+    }
+  } else {
+    if (updates.password !== undefined) {
+      users[username].password = updates.password;
+    }
+    if (updates.permissions !== undefined) {
+      users[username].permissions = updates.permissions;
+    }
+    if (updates.role !== undefined) {
+      users[username].role = updates.role;
+    }
   }
   
   await collection.replaceOne(
@@ -172,6 +183,8 @@ export async function updateUserProfile(
     designation?: string;
     photo?: string;
     password?: string;
+    firstName?: string;
+    lastName?: string;
   }
 ): Promise<boolean> {
   const collection = await getCollection(COLLECTIONS.USERS);
@@ -195,6 +208,12 @@ export async function updateUserProfile(
   }
   if (updates.password !== undefined) {
     users[username].password = updates.password;
+  }
+  if (updates.firstName !== undefined) {
+    users[username].firstName = updates.firstName;
+  }
+  if (updates.lastName !== undefined) {
+    users[username].lastName = updates.lastName;
   }
   
   await collection.replaceOne(

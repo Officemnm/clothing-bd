@@ -446,11 +446,17 @@ textarea:focus {
 
 /* Better focus states for accessibility */
 button:focus-visible,
-a:focus-visible,
-input:focus-visible,
-select:focus-visible {
+a:focus-visible {
   outline: 2px solid #14b8a6;
   outline-offset: 2px;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-color: #94a3b8 !important;
+  box-shadow: 0 0 0 1px #94a3b8;
 }
 
 /* Improve button active states on mobile */

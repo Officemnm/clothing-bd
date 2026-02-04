@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchChallanReport } from '@/lib/challan-report';
 import { getSession } from '@/lib/session';
+import { updateChallanStats } from '@/lib/stats';
 
 /**
  * GET /api/challan-report
@@ -34,10 +35,28 @@ export async function GET(request: NextRequest) {
     // Fetch the challan report
     const result = await fetchChallanReport(booking.trim());
 
+    // Track successful report generation
+    if (result.success && session.username) {
+      await updateChallanStats(session.username, booking.trim().toUpperCase(), 'success');
+    } else if (!result.success && session.username) {
+      await updateChallanStats(session.username, booking.trim().toUpperCase(), 'failed');
+    }
+
     return NextResponse.json(result);
 
   } catch (error) {
     console.error('Challan report API error:', error);
+    
+    // Track failed attempt
+    const session = await getSession();
+    if (session?.username) {
+      try {
+        await updateChallanStats(session.username, 'Unknown', 'failed');
+      } catch (e) {
+        console.error('Failed to log challan stats:', e);
+      }
+    }
+    
     return NextResponse.json(
       { 
         success: false, 
@@ -77,10 +96,28 @@ export async function POST(request: NextRequest) {
     // Fetch the challan report
     const result = await fetchChallanReport(booking.trim());
 
+    // Track successful report generation
+    if (result.success && session.username) {
+      await updateChallanStats(session.username, booking.trim().toUpperCase(), 'success');
+    } else if (!result.success && session.username) {
+      await updateChallanStats(session.username, booking.trim().toUpperCase(), 'failed');
+    }
+
     return NextResponse.json(result);
 
   } catch (error) {
     console.error('Challan report API error:', error);
+    
+    // Track failed attempt
+    const session = await getSession();
+    if (session?.username) {
+      try {
+        await updateChallanStats(session.username, 'Unknown', 'failed');
+      } catch (e) {
+        console.error('Failed to log challan stats:', e);
+      }
+    }
+    
     return NextResponse.json(
       { 
         success: false, 

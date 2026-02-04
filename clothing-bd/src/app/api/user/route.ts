@@ -47,6 +47,8 @@ export async function GET(request: NextRequest) {
         permissions: userData?.permissions || [],
         last_login: userData?.last_login || '',
         created_at: userData?.created_at || '',
+        firstName: userData?.firstName || '',
+        lastName: userData?.lastName || '',
       }
     });
     res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
@@ -76,7 +78,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { phone, email, designation, photo, currentPassword, newPassword } = body;
+    const { phone, email, designation, photo, currentPassword, newPassword, firstName, lastName } = body;
 
     // Validate password change if requested
     if (newPassword) {
@@ -92,6 +94,8 @@ export async function PUT(request: NextRequest) {
       designation?: string;
       photo?: string;
       password?: string;
+      firstName?: string;
+      lastName?: string;
     } = {};
 
     if (phone !== undefined) updates.phone = phone;
@@ -99,6 +103,8 @@ export async function PUT(request: NextRequest) {
     if (designation !== undefined) updates.designation = designation;
     if (photo !== undefined) updates.photo = photo;
     if (newPassword) updates.password = newPassword;
+    if (firstName !== undefined) updates.firstName = firstName;
+    if (lastName !== undefined) updates.lastName = lastName;
 
     const success = await updateUserProfile(session.username, updates);
 

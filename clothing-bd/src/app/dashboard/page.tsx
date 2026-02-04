@@ -20,6 +20,7 @@ import {
   XCircleIcon,
   FunnelIcon,
   MagnifyingGlassIcon,
+  ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 import {
   ChartBarIcon as ChartBarIconSolid,
@@ -33,8 +34,19 @@ interface Stats {
   accessories: { count: number };
   closing: { count: number };
   po: { count: number };
+  challan: { count: number };
+  hourly: { count: number };
+  sewingClosing: { count: number };
   history: HistoryItem[];
-  chart: { labels: string[]; closing: number[]; po: number[]; accessories: number[] };
+  chart: { 
+    labels: string[]; 
+    closing: number[]; 
+    po: number[]; 
+    accessories: number[];
+    challan: number[];
+    hourly: number[];
+    sewingClosing: number[];
+  };
   userUsage: UserUsage[];
 }
 
@@ -45,6 +57,7 @@ interface HistoryItem {
   display_date?: string;
   time: string;
   type: string;
+  iso_time?: string;
   file_count?: number;
   status?: 'success' | 'failed';
 }
@@ -61,37 +74,61 @@ interface UserInfo {
   permissions?: string[];
 }
 
-// Color palette - NO PURPLE - using teal, amber, blue, green, cyan
-const CHART_COLORS = ['#14b8a6', '#f59e0b', '#3b82f6', '#22c55e', '#06b6d4'];
+// Color palette - modern, minimal tones
+const CHART_COLORS = ['#0ea5e9', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#06b6d4', '#f43f5e', '#6366f1'];
 
-// Smooth spring animation
-const springTransition = { type: 'spring' as const, stiffness: 300, damping: 30 };
+// Modern animation variants
+const springTransition = { type: 'spring' as const, stiffness: 400, damping: 30 };
+
+// Page entrance animation
+const pageVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1, delayChildren: 0.05 }
+  }
+};
 
 // Stagger children animation
 const staggerContainer = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.08, delayChildren: 0.1 }
+    transition: { staggerChildren: 0.06, delayChildren: 0.02 }
   }
 };
 
 const fadeInUp = {
-  hidden: { opacity: 0, y: 30 },
+  hidden: { opacity: 0, y: 20 },
   visible: { 
     opacity: 1, 
     y: 0, 
-    transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] as const }
+    transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] as const }
   }
 };
 
 const scaleIn = {
-  hidden: { opacity: 0, scale: 0.8 },
+  hidden: { opacity: 0, scale: 0.95 },
   visible: { 
     opacity: 1, 
     scale: 1, 
-    transition: { duration: 0.4, ease: 'easeOut' as const }
+    transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] as const }
   }
+};
+
+const slideIn = {
+  hidden: { opacity: 0, x: -20 },
+  visible: { 
+    opacity: 1, 
+    x: 0, 
+    transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] as const }
+  }
+};
+
+// Floating animation for decorative elements
+const floatAnimation = {
+  y: [0, -8, 0],
+  transition: { duration: 4, repeat: Infinity, ease: 'easeInOut' as const }
 };
 
 const slideInLeft = {
@@ -180,15 +217,29 @@ export default function DashboardPage() {
   const [dateFilter, setDateFilter] = useState('all');
   const [greeting, setGreeting] = useState('');
   const [currentTime, setCurrentTime] = useState('');
+  const [sessionKey, setSessionKey] = useState<string>('');
 
   useEffect(() => {
     const updateTime = () => {
+      // Use Bangladesh timezone (Asia/Dhaka) - get 24-hour format
       const now = new Date();
-      const hour = now.getHours();
-      if (hour < 12) setGreeting('Good Morning');
-      else if (hour < 17) setGreeting('Good Afternoon');
-      else setGreeting('Good Evening');
-      setCurrentTime(now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+      const bdTimeStr = now.toLocaleString('en-US', { 
+        timeZone: 'Asia/Dhaka', 
+        hour: 'numeric', 
+        hour12: false 
+      });
+      const bdHour = parseInt(bdTimeStr) || 0;
+      
+      if (bdHour >= 5 && bdHour < 12) setGreeting('Good Morning');
+      else if (bdHour >= 12 && bdHour < 17) setGreeting('Good Afternoon');
+      else if (bdHour >= 17 && bdHour < 21) setGreeting('Good Evening');
+      else setGreeting('Good Night');
+      
+      setCurrentTime(now.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        timeZone: 'Asia/Dhaka'
+      }));
     };
     updateTime();
     const interval = setInterval(updateTime, 60000);
@@ -196,6 +247,24 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
+    // Check for new login - reset state if needed
+    const isNewLogin = sessionStorage.getItem('newLogin') === 'true';
+    const loginUser = sessionStorage.getItem('loginUser') || '';
+    
+    if (isNewLogin) {
+      console.log('[DashboardPage] New login detected for user:', loginUser);
+      // Reset all state for new session
+      setUserInfo(null);
+      setStats(null);
+      setSessionKey('');
+      // Clear the flag immediately after reading
+      sessionStorage.removeItem('newLogin');
+      // Set the expected user
+      if (loginUser) {
+        setSessionKey(loginUser);
+      }
+    }
+    
     fetchData();
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
@@ -205,13 +274,32 @@ export default function DashboardPage() {
     try {
       const timestamp = Date.now();
       const results = await Promise.all([
-        fetch(`/api/auth/session?t=${timestamp}`, { cache: 'no-store', credentials: 'include' }),
-        fetch(`/api/stats?t=${timestamp}`, { cache: 'no-store', credentials: 'include' })
+        fetch(`/api/auth/session?t=${timestamp}`, { 
+          cache: 'no-store', 
+          credentials: 'include',
+          headers: { 'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache' }
+        }),
+        fetch(`/api/stats?t=${timestamp}`, { 
+          cache: 'no-store', 
+          credentials: 'include',
+          headers: { 'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache' }
+        })
       ]);
       const userRes = results[0];
       const statsRes = results[1];
       if (userRes.ok) {
         const userData = await userRes.json();
+        const newUsername = userData.user?.username || userData.user?.name;
+        
+        // If username changed, reset stats
+        if (sessionKey && sessionKey !== newUsername) {
+          console.log('[DashboardPage] User changed from', sessionKey, 'to', newUsername, '- resetting stats');
+          setStats(null);
+          // Clear cached login user
+          sessionStorage.removeItem('loginUser');
+        }
+        
+        setSessionKey(newUsername || '');
         setUserInfo(userData.user);
       }
       const data = await statsRes.json();
@@ -239,6 +327,9 @@ export default function DashboardPage() {
       Closing: stats.chart.closing[i] || 0,
       PO: stats.chart.po[i] || 0,
       Accessories: stats.chart.accessories[i] || 0,
+      Challan: stats.chart.challan?.[i] || 0,
+      Hourly: stats.chart.hourly?.[i] || 0,
+      SewingClosing: stats.chart.sewingClosing?.[i] || 0,
     }));
   }, [stats]);
 
@@ -285,24 +376,37 @@ export default function DashboardPage() {
   const filteredHistory = useMemo(() => {
     if (!stats?.history) return [];
     const historyToFilter = isAdmin ? stats.history : stats.history.filter(h => h.user?.toLowerCase() === username.toLowerCase());
-    // Combine date and time into a single Date object for accurate sorting
+    
+    // Use iso_time for accurate sorting (newest first)
     const getDateTime = (item: HistoryItem) => {
-      // Try to combine date and time, fallback to just date
+      // Prefer iso_time if available (most accurate)
+      if (item.iso_time) {
+        return new Date(item.iso_time);
+      }
+      // Fallback: combine date and time
       if (item.date && item.time) {
         // Support both DD-MM-YYYY and YYYY-MM-DD
         let [d, m, y] = item.date.split('-');
-        if (y.length === 4) { // YYYY-MM-DD
+        if (y && y.length === 4) { // YYYY-MM-DD format
           [y, m, d] = [d, m, y];
         }
-        // time: HH:MM:SS or HH:MM
-        const t = (item.time || '00:00:00').split(':');
-        const hour = parseInt(t[0] || '0', 10);
-        const min = parseInt(t[1] || '0', 10);
-        const sec = parseInt(t[2] || '0', 10);
+        // Handle 12-hour time format (e.g., "02:30:15 PM")
+        const timeStr = item.time || '00:00:00';
+        const isPM = timeStr.toLowerCase().includes('pm');
+        const isAM = timeStr.toLowerCase().includes('am');
+        const timeParts = timeStr.replace(/[ap]m/gi, '').trim().split(':');
+        let hour = parseInt(timeParts[0] || '0', 10);
+        const min = parseInt(timeParts[1] || '0', 10);
+        const sec = parseInt(timeParts[2] || '0', 10);
+        
+        if (isPM && hour !== 12) hour += 12;
+        if (isAM && hour === 12) hour = 0;
+        
         return new Date(parseInt(y), parseInt(m) - 1, parseInt(d), hour, min, sec);
       }
       return parseDate(item.date);
     };
+    
     const sorted = [...historyToFilter].sort((a, b) => getDateTime(b).getTime() - getDateTime(a).getTime());
     return sorted.filter((item) => {
       const matchesSearch = searchQuery === '' || 
@@ -334,54 +438,105 @@ export default function DashboardPage() {
       case 'Closing Report': return 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200';
       case 'PO Sheet': return 'bg-blue-50 text-blue-700 ring-1 ring-blue-200';
       case 'Accessories': return 'bg-amber-50 text-amber-700 ring-1 ring-amber-200';
+      case 'Challan Report': return 'bg-violet-50 text-violet-700 ring-1 ring-violet-200';
+      case 'Hourly Report': return 'bg-sky-50 text-sky-700 ring-1 ring-sky-200';
+      case 'Sewing Closing Report': return 'bg-rose-50 text-rose-700 ring-1 ring-rose-200';
       default: return 'bg-slate-50 text-slate-600 ring-1 ring-slate-200';
     }
   };
 
-  // Loading State
+  const getStatusBadge = (status?: 'success' | 'failed') => {
+    if (status === 'failed') {
+      return 'bg-red-50 text-red-600 ring-1 ring-red-200';
+    }
+    return 'bg-green-50 text-green-600 ring-1 ring-green-200';
+  };
+
+  // Loading State - Modern minimal loading
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-[70vh]">
+      <div className="flex items-center justify-center h-[80vh]">
         <motion.div 
           initial={{ opacity: 0 }} 
           animate={{ opacity: 1 }}
-          className="flex flex-col items-center gap-8"
+          className="flex flex-col items-center gap-6"
         >
+          {/* Animated Logo/Icon */}
           <div className="relative">
+            {/* Outer ring */}
             <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-              className="w-20 h-20 rounded-full border-[3px] border-slate-200 border-t-teal-500"
-            />
-            <motion.div
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-              className="absolute inset-0 flex items-center justify-center"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.4 }}
+              className="w-20 h-20 rounded-2xl bg-slate-50 flex items-center justify-center"
             >
-              <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
-                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                </svg>
+              {/* Animated bars */}
+              <div className="flex items-end gap-1 h-8">
+                <motion.div
+                  animate={{ height: ['40%', '100%', '40%'] }}
+                  transition={{ duration: 0.8, repeat: Infinity, delay: 0 }}
+                  className="w-2 bg-slate-300 rounded-full"
+                  style={{ height: '40%' }}
+                />
+                <motion.div
+                  animate={{ height: ['60%', '30%', '60%'] }}
+                  transition={{ duration: 0.8, repeat: Infinity, delay: 0.15 }}
+                  className="w-2 bg-slate-400 rounded-full"
+                  style={{ height: '60%' }}
+                />
+                <motion.div
+                  animate={{ height: ['30%', '80%', '30%'] }}
+                  transition={{ duration: 0.8, repeat: Infinity, delay: 0.3 }}
+                  className="w-2 bg-slate-500 rounded-full"
+                  style={{ height: '30%' }}
+                />
+                <motion.div
+                  animate={{ height: ['70%', '40%', '70%'] }}
+                  transition={{ duration: 0.8, repeat: Infinity, delay: 0.45 }}
+                  className="w-2 bg-slate-600 rounded-full"
+                  style={{ height: '70%' }}
+                />
               </div>
             </motion.div>
-          </div>
-          <div className="text-center">
-            <motion.p 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-base font-semibold text-slate-700"
+            
+            {/* Progress dots */}
+            <motion.div 
+              className="absolute -bottom-3 left-1/2 -translate-x-1/2 flex gap-1"
             >
-              Loading Dashboard
-            </motion.p>
-            <motion.p 
-              animate={{ opacity: [0.5, 1, 0.5] }}
-              transition={{ duration: 2, repeat: Infinity }}
-              className="text-sm text-slate-400 mt-1"
-            >
-              Fetching your data...
-            </motion.p>
+              <motion.div
+                animate={{ opacity: [0.3, 1, 0.3] }}
+                transition={{ duration: 1.2, repeat: Infinity, delay: 0 }}
+                className="w-1.5 h-1.5 bg-slate-400 rounded-full"
+              />
+              <motion.div
+                animate={{ opacity: [0.3, 1, 0.3] }}
+                transition={{ duration: 1.2, repeat: Infinity, delay: 0.2 }}
+                className="w-1.5 h-1.5 bg-slate-400 rounded-full"
+              />
+              <motion.div
+                animate={{ opacity: [0.3, 1, 0.3] }}
+                transition={{ duration: 1.2, repeat: Infinity, delay: 0.4 }}
+                className="w-1.5 h-1.5 bg-slate-400 rounded-full"
+              />
+            </motion.div>
           </div>
+          
+          {/* Text */}
+          <motion.div 
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="text-center"
+          >
+            <p className="text-sm font-medium text-slate-600">Loading Dashboard</p>
+            <motion.p 
+              animate={{ opacity: [0.4, 0.8, 0.4] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+              className="text-xs text-slate-400 mt-1"
+            >
+              Please wait...
+            </motion.p>
+          </motion.div>
         </motion.div>
       </div>
     );
@@ -389,346 +544,377 @@ export default function DashboardPage() {
 
   // ============ ADMIN DASHBOARD ============
   if (isAdmin) {
-    const statCards = [
-      { 
-        id: 'closing', 
-        label: 'Closing Reports', 
-        value: stats?.closing.count || 0, 
-        icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', 
-        gradient: 'from-emerald-500 to-teal-500'
-      },
-      { 
-        id: 'po', 
-        label: 'PO Sheets', 
-        value: stats?.po.count || 0, 
-        icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', 
-        gradient: 'from-blue-500 to-cyan-500'
-      },
-      { 
-        id: 'accessories', 
-        label: 'Accessories', 
-        value: stats?.accessories.count || 0, 
-        icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4', 
-        gradient: 'from-amber-500 to-orange-500'
-      },
-      { 
-        id: 'users', 
-        label: 'Active Users', 
-        value: stats?.users.count || 0, 
-        icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z', 
-        gradient: 'from-cyan-500 to-teal-500'
-      },
+    // Key metrics - simplified to 4 main stats with glass morphism
+    const keyMetrics = [
+      { id: 'total', label: 'Total Reports', value: (stats?.closing.count || 0) + (stats?.po.count || 0) + (stats?.accessories.count || 0) + (stats?.challan?.count || 0) + (stats?.hourly?.count || 0) + (stats?.sewingClosing?.count || 0), iconType: 'chart', accent: '#64748b' },
+      { id: 'today', label: 'Today', value: stats?.history?.filter(h => { const today = new Date(); today.setHours(0,0,0,0); const d = h.date?.split('-'); if(!d || d.length !== 3) return false; const itemDate = new Date(parseInt(d[2]), parseInt(d[1])-1, parseInt(d[0])); return itemDate >= today; }).length || 0, iconType: 'calendar', accent: '#10b981' },
+      { id: 'users', label: 'Active Users', value: stats?.users.count || 0, iconType: 'users', accent: '#3b82f6' },
+      { id: 'success', label: 'Success Rate', value: stats?.history ? Math.round((stats.history.filter(h => h.status !== 'failed').length / Math.max(stats.history.length, 1)) * 100) : 100, suffix: '%', iconType: 'check', accent: '#22c55e' },
+    ];
+
+    // Service breakdown for horizontal scroll section
+    const serviceBreakdown = [
+      { id: 'closing', label: 'Closing', value: stats?.closing.count || 0, color: '#10b981' },
+      { id: 'po', label: 'PO Sheet', value: stats?.po.count || 0, color: '#3b82f6' },
+      { id: 'accessories', label: 'Accessories', value: stats?.accessories.count || 0, color: '#f59e0b' },
+      { id: 'challan', label: 'Challan', value: stats?.challan?.count || 0, color: '#8b5cf6' },
+      { id: 'hourly', label: 'Hourly', value: stats?.hourly?.count || 0, color: '#0ea5e9' },
+      { id: 'sewing', label: 'Sewing', value: stats?.sewingClosing?.count || 0, color: '#f43f5e' },
     ];
 
     return (
       <motion.div 
-        variants={staggerContainer} 
+        variants={pageVariants} 
         initial="hidden" 
         animate="visible" 
-        className="space-y-8"
+        className="space-y-6 pb-8"
       >
-        {/* Header */}
-        <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+        {/* Minimal Header */}
+        <motion.header variants={fadeInUp} className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
-            <motion.div 
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-teal-50 to-emerald-50 rounded-full mb-3 border border-teal-100/50"
+            <motion.p 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1"
             >
-              <motion.span 
-                animate={{ scale: [1, 1.3, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-                className="w-2 h-2 bg-gradient-to-r from-teal-500 to-emerald-500 rounded-full"
-              />
-              <span className="text-[11px] font-bold text-teal-600 tracking-wide uppercase">Admin Panel</span>
-            </motion.div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight">{greeting}, {username}</h1>
-            <p className="text-sm text-slate-500 mt-1.5">Here&apos;s what&apos;s happening with your system today.</p>
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            </motion.p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+              {greeting}, <span className="bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">{username}</span>
+            </h1>
           </div>
           <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="text-left sm:text-right bg-white/80 backdrop-blur-sm px-5 py-3 rounded-2xl border border-slate-100 shadow-sm"
+            transition={{ delay: 0.1 }}
+            className="flex items-center gap-3"
           >
-            <p className="text-2xl sm:text-3xl font-light text-slate-700 tabular-nums">{currentTime}</p>
-            <p className="text-xs text-slate-400 mt-1 font-medium">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
-          </motion.div>
-        </motion.div>
-
-        {/* Stat Cards */}
-        <motion.div variants={fadeInUp} className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-          {statCards.map((card, index) => (
             <motion.div 
-              key={card.id} 
-              variants={scaleIn}
-              whileHover={{ 
-                y: -6, 
-                transition: springTransition 
-              }}
-              whileTap={{ scale: 0.98 }}
-              className="relative bg-white rounded-2xl p-6 border border-slate-200/60 shadow-sm overflow-hidden group cursor-pointer hover:shadow-lg hover:shadow-slate-200/50 transition-shadow duration-300"
+              animate={floatAnimation}
+              className="px-4 py-2 bg-slate-900 text-white rounded-xl text-sm font-medium shadow-lg shadow-slate-900/20"
             >
-              {/* Top gradient line on hover */}
-              <motion.div 
-                className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${card.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}
-              />
-              
-              {/* Background decoration */}
-              <motion.div 
-                className={`absolute -top-10 -right-10 w-28 h-28 bg-gradient-to-br ${card.gradient} opacity-[0.05] rounded-full blur-xl group-hover:opacity-[0.1] transition-opacity`}
-              />
-              
-              <div className="relative z-10">
-                <div className="flex items-center justify-between mb-4">
-                  <motion.div 
-                    whileHover={{ scale: 1.05, rotate: [0, -5, 5, 0] }}
-                    className={`w-12 h-12 rounded-xl bg-gradient-to-br ${card.gradient} flex items-center justify-center shadow-lg`}
-                    style={{ boxShadow: '0 8px 24px -4px rgba(20, 184, 166, 0.25)' }}
-                  >
-                    <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d={card.icon} />
+              {currentTime}
+            </motion.div>
+          </motion.div>
+        </motion.header>
+
+        {/* Key Metrics */}
+        <motion.div variants={staggerContainer} className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {keyMetrics.map((metric) => (
+            <motion.div
+              key={metric.id}
+              variants={scaleIn}
+              whileHover={{ y: -2, transition: springTransition }}
+              className="bg-white rounded-xl p-4 border border-slate-100 hover:border-slate-200 hover:shadow-md transition-all"
+            >
+              <div className="flex items-center gap-2.5 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
+                  {metric.iconType === 'chart' && (
+                    <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
                     </svg>
-                  </motion.div>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Total</span>
+                  )}
+                  {metric.iconType === 'calendar' && (
+                    <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                    </svg>
+                  )}
+                  {metric.iconType === 'users' && (
+                    <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                    </svg>
+                  )}
+                  {metric.iconType === 'check' && (
+                    <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  )}
                 </div>
-                
-                <AnimatePresence mode="wait">
-                  <motion.p 
-                    key={card.value}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="text-3xl font-bold text-slate-800 tabular-nums"
-                  >
-                    {card.value.toLocaleString()}
-                  </motion.p>
-                </AnimatePresence>
-                <p className="text-sm text-slate-500 mt-1 font-medium">{card.label}</p>
+                <p className="text-[11px] text-slate-500 font-medium">{metric.label}</p>
               </div>
+              <motion.p 
+                key={metric.value}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-xl font-semibold text-slate-800 tabular-nums"
+              >
+                {metric.value.toLocaleString()}{metric.suffix || ''}
+              </motion.p>
             </motion.div>
           ))}
         </motion.div>
 
-        {/* Quick Actions */}
+        {/* Service Breakdown */}
         <motion.div variants={fadeInUp}>
-          <h2 className="text-base font-bold text-slate-700 mb-4 flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center">
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            Quick Actions
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {allowedServices.map((key) => {
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-slate-700">Reports by Service</h2>
+            <span className="text-[10px] text-slate-400">All time</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+            {serviceBreakdown.map((service, i) => (
+              <motion.div
+                key={service.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.03 }}
+                whileHover={{ y: -2 }}
+                className="bg-white rounded-lg p-3 border border-slate-100 hover:border-slate-200 hover:shadow-sm transition-all cursor-default"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: service.color }} />
+                  <p className="text-[10px] text-slate-500 font-medium truncate">{service.label}</p>
+                </div>
+                <motion.p 
+                  key={service.value}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-lg font-semibold text-slate-800 tabular-nums"
+                >
+                  {service.value.toLocaleString()}
+                </motion.p>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Quick Actions */}
+        <motion.section variants={fadeInUp}>
+          <h2 className="text-sm font-semibold text-slate-700 mb-3">Quick Actions</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+            {allowedServices.map((key, i) => {
               const service = serviceConfig[key];
               if (!service) return null;
               return (
-              <motion.div key={key} variants={slideInLeft} whileHover={{ x: 4, transition: springTransition }}>
-                <Link href={service.href} className="flex items-center gap-4 p-5 bg-white rounded-2xl border border-slate-200/60 hover:border-teal-200/50 hover:shadow-lg hover:shadow-teal-500/5 transition-all duration-300 group">
-                  <motion.div 
-                    whileHover={{ rotate: [0, -10, 10, 0], transition: { duration: 0.4 } }}
-                    className={`w-12 h-12 rounded-xl bg-gradient-to-br ${service.gradient} flex items-center justify-center shadow-lg`}
+                <motion.div 
+                  key={key} 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.03 }}
+                  whileHover={{ x: 2 }}
+                >
+                  <Link 
+                    href={service.href} 
+                    className="flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-100 hover:border-slate-200 hover:shadow-sm transition-all group"
                   >
-                    <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d={service.icon} />
-                    </svg>
-                  </motion.div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-700 group-hover:text-teal-600 transition-colors truncate">{service.title}</p>
-                    <p className="text-xs text-slate-400 truncate mt-0.5">{service.subtitle}</p>
-                  </div>
-                  <motion.div 
-                    animate={{ x: [0, 4, 0] }} 
-                    transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }} 
-                    className="w-8 h-8 rounded-lg bg-slate-50 group-hover:bg-teal-50 flex items-center justify-center transition-colors"
-                  >
-                    <svg className="w-4 h-4 text-slate-300 group-hover:text-teal-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <div className="w-9 h-9 rounded-lg bg-slate-100 group-hover:bg-slate-200 flex items-center justify-center transition-colors flex-shrink-0">
+                      <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d={service.icon} />
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-medium text-slate-700 truncate">{service.title}</p>
+                      <p className="text-[11px] text-slate-400 truncate">{service.subtitle}</p>
+                    </div>
+                    <svg className="w-4 h-4 text-slate-300 group-hover:text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                     </svg>
-                  </motion.div>
-                </Link>
-              </motion.div>
+                  </Link>
+                </motion.div>
               );
             })}
           </div>
-        </motion.div>
+        </motion.section>
 
         {/* Charts */}
-        <motion.div variants={fadeInUp} className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          <div className="lg:col-span-3 bg-white rounded-2xl p-6 border border-slate-200/60 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
+        <motion.div variants={fadeInUp} className="grid grid-cols-1 lg:grid-cols-5 gap-3">
+          <motion.div 
+            variants={scaleIn}
+            className="lg:col-span-3 bg-white rounded-xl p-4 border border-slate-100"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
               <div>
-                <h3 className="text-base font-bold text-slate-700">Activity Overview</h3>
-                <p className="text-xs text-slate-400 mt-1">Last 7 days performance</p>
+                <h3 className="text-sm font-semibold text-slate-700">Activity Trend</h3>
+                <p className="text-[10px] text-slate-400">Last 7 days by service</p>
               </div>
-              <div className="flex gap-4">
-                <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /><span className="text-xs text-slate-500 font-medium">Closing</span></div>
-                <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-blue-500" /><span className="text-xs text-slate-500 font-medium">PO</span></div>
-                <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" /><span className="text-xs text-slate-500 font-medium">Accessories</span></div>
-              </div>
-            </div>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={serviceChartData}>
-                  <defs>
-                    <linearGradient id="closingGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#22c55e" stopOpacity={0.2}/><stop offset="95%" stopColor="#22c55e" stopOpacity={0}/></linearGradient>
-                    <linearGradient id="poGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient>
-                    <linearGradient id="accGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2}/><stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/></linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#94a3b8', fontWeight: 500 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: '#94a3b8', fontWeight: 500 }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ backgroundColor: 'white', border: 'none', borderRadius: '12px', boxShadow: '0 10px 40px rgba(0,0,0,0.12)', padding: '12px 16px', fontSize: '13px' }} />
-                  <Area type="monotone" dataKey="Closing" stroke="#22c55e" strokeWidth={2.5} fill="url(#closingGrad)" />
-                  <Area type="monotone" dataKey="PO" stroke="#3b82f6" strokeWidth={2.5} fill="url(#poGrad)" />
-                  <Area type="monotone" dataKey="Accessories" stroke="#f59e0b" strokeWidth={2.5} fill="url(#accGrad)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-slate-200/60 shadow-sm">
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h3 className="text-base font-bold text-slate-700">User Distribution</h3>
-                <p className="text-xs text-slate-400 mt-1">Top contributors</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500" /><span className="text-[9px] text-slate-500">Closing</span></div>
+                <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" /><span className="text-[9px] text-slate-500">PO</span></div>
+                <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" /><span className="text-[9px] text-slate-500">Accessories</span></div>
+                <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-violet-500" /><span className="text-[9px] text-slate-500">Challan</span></div>
+                <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-sky-500" /><span className="text-[9px] text-slate-500">Hourly</span></div>
+                <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-rose-500" /><span className="text-[9px] text-slate-500">Sewing</span></div>
               </div>
             </div>
             <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={serviceChartData}>
+                  <defs>
+                    <linearGradient id="closingGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/><stop offset="95%" stopColor="#10b981" stopOpacity={0}/></linearGradient>
+                    <linearGradient id="poGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient>
+                    <linearGradient id="accGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2}/><stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/></linearGradient>
+                    <linearGradient id="challanGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.2}/><stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/></linearGradient>
+                    <linearGradient id="hourlyGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.2}/><stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/></linearGradient>
+                    <linearGradient id="sewingGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#f43f5e" stopOpacity={0.2}/><stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/></linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={30} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '10px', fontSize: '11px', color: 'white', padding: '10px 14px' }}
+                    labelStyle={{ color: '#94a3b8', marginBottom: '6px', fontWeight: 500 }}
+                  />
+                  <Area type="monotone" dataKey="Closing" stroke="#10b981" strokeWidth={2} fill="url(#closingGrad)" />
+                  <Area type="monotone" dataKey="PO" stroke="#3b82f6" strokeWidth={2} fill="url(#poGrad)" />
+                  <Area type="monotone" dataKey="Accessories" stroke="#f59e0b" strokeWidth={2} fill="url(#accGrad)" />
+                  <Area type="monotone" dataKey="Challan" stroke="#8b5cf6" strokeWidth={2} fill="url(#challanGrad)" />
+                  <Area type="monotone" dataKey="Hourly" stroke="#0ea5e9" strokeWidth={2} fill="url(#hourlyGrad)" />
+                  <Area type="monotone" dataKey="SewingClosing" stroke="#f43f5e" strokeWidth={2} fill="url(#sewingGrad)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </motion.div>
+
+          <motion.div variants={scaleIn} className="lg:col-span-2 bg-white rounded-xl p-4 border border-slate-100">
+            <h3 className="text-sm font-semibold text-slate-700 mb-3">Top Contributors</h3>
+            <div className="h-40">
               {userPieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={userPieData} cx="50%" cy="45%" innerRadius={45} outerRadius={70} paddingAngle={4} dataKey="value" strokeWidth={0}>
+                    <Pie data={userPieData} cx="50%" cy="50%" innerRadius={35} outerRadius={55} paddingAngle={4} dataKey="value" strokeWidth={0}>
                       {userPieData.map((_, index) => (<Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />))}
                     </Pie>
-                    <Tooltip contentStyle={{ backgroundColor: 'white', border: 'none', borderRadius: '12px', boxShadow: '0 10px 40px rgba(0,0,0,0.12)', fontSize: '13px' }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '10px', fontSize: '11px', color: 'white' }} />
                   </PieChart>
                 </ResponsiveContainer>
-              ) : (<div className="h-full flex items-center justify-center text-slate-400 text-sm">No data available</div>)}
+              ) : (<div className="h-full flex items-center justify-center text-slate-400 text-xs">No data available</div>)}
             </div>
-            <div className="flex flex-wrap justify-center gap-4 mt-3">
+            <div className="flex flex-wrap justify-center gap-3 mt-3">
               {userPieData.slice(0, 4).map((user, i) => (
-                <div key={user.name} className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLORS[i] }} />
-                  <span className="text-xs text-slate-500 truncate max-w-[80px] font-medium">{user.name}</span>
-                </div>
+                <motion.div 
+                  key={user.name} 
+                  className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 rounded-full"
+                  whileHover={{ scale: 1.05 }}
+                >
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: CHART_COLORS[i] }} />
+                  <span className="text-[10px] text-slate-600 font-medium truncate max-w-[60px]">{user.name}</span>
+                </motion.div>
               ))}
             </div>
-          </div>
+          </motion.div>
         </motion.div>
 
-        {/* Activity Table */}
-        <motion.div variants={fadeInUp}>
-          <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
-            <div className="p-5 sm:p-6 border-b border-slate-100">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <h3 className="text-base font-bold text-slate-700 flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center">
-                      <ClockIcon className="w-4 h-4 text-white" />
-                    </div>
-                    Recent Activity
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-1.5 ml-10">All user activities across services</p>
+        {/* Recent Activity */}
+        <motion.section variants={fadeInUp}>
+          <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
+            <div className="p-3 border-b border-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-slate-700">Recent Activity</h3>
+              <div className="flex gap-2">
+                <div className="relative">
+                  <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                  <input 
+                    type="text" 
+                    placeholder="Search..." 
+                    value={searchQuery} 
+                    onChange={(e) => setSearchQuery(e.target.value)} 
+                    className="w-36 pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 transition-all" 
+                  />
                 </div>
-                <div className="flex flex-wrap gap-3">
-                  <div className="relative flex-1 sm:flex-none">
-                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full sm:w-44 pl-9 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 transition-all" />
-                  </div>
-                  <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="flex-1 sm:flex-none px-4 py-2.5 text-sm bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 cursor-pointer min-w-0 font-medium">
-                    <option value="all">All Types</option><option value="Closing Report">Closing</option><option value="PO Sheet">PO</option><option value="Accessories">Accessories</option>
-                  </select>
-                  <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="flex-1 sm:flex-none px-4 py-2.5 text-sm bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 cursor-pointer min-w-0 font-medium">
-                    <option value="all">All Time</option><option value="today">Today</option><option value="week">Week</option><option value="month">Month</option>
-                  </select>
-                </div>
+                <select 
+                  value={typeFilter} 
+                  onChange={(e) => setTypeFilter(e.target.value)} 
+                  className="px-3 py-2 text-xs bg-slate-50 border border-slate-100 rounded-lg focus:outline-none cursor-pointer"
+                >
+                  <option value="all">All</option>
+                  <option value="Closing Report">Closing</option>
+                  <option value="PO Sheet">PO</option>
+                  <option value="Accessories">Accessories</option>
+                </select>
+                <select 
+                  value={dateFilter} 
+                  onChange={(e) => setDateFilter(e.target.value)} 
+                  className="px-3 py-2 text-xs bg-slate-50 border border-slate-100 rounded-lg focus:outline-none cursor-pointer"
+                >
+                  <option value="all">All Time</option>
+                  <option value="today">Today</option>
+                  <option value="week">Week</option>
+                </select>
               </div>
             </div>
+            
             {/* Mobile Card View */}
-            <div className="sm:hidden divide-y divide-slate-100">
+            <div className="sm:hidden divide-y divide-slate-50">
               <AnimatePresence>
                 {filteredHistory.length === 0 ? (
-                  <div className="py-12 text-center">
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center gap-2">
-                      <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center">
-                        <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
-                      </div>
-                      <span className="text-xs text-slate-400 font-medium">No records found</span>
-                    </motion.div>
-                  </div>
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-10 text-center">
+                    <p className="text-xs text-slate-400">No records found</p>
+                  </motion.div>
                 ) : (
-                  filteredHistory.slice(0, 10).map((item, index) => (
-                    <motion.div key={`mobile-${item.date}-${item.time}-${index}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shadow-sm flex-shrink-0">{item.user?.charAt(0).toUpperCase() || '?'}</div>
+                  filteredHistory.slice(0, 8).map((item, index) => (
+                    <motion.div 
+                      key={`mobile-${item.date}-${item.time}-${index}`} 
+                      initial={{ opacity: 0, x: -10 }} 
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.03 }}
+                      className="p-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
+                          {item.user?.charAt(0).toUpperCase() || '?'}
+                        </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-sm font-medium text-slate-700 truncate">{item.user}</span>
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full flex-shrink-0 ${item.status === 'failed' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                              {item.status === 'failed' ? 'Failed' : 'Success'}
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium text-slate-800 truncate">{item.user}</span>
+                            <span className={`px-1.5 py-0.5 text-[9px] font-medium rounded ${
+                              item.status === 'failed' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'
+                            }`}>
+                              {item.status === 'failed' ? 'Failed' : 'OK'}
                             </span>
                           </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className={`inline-flex px-2 py-0.5 text-[10px] font-medium rounded-full ${getTypeBadge(item.type)}`}>{item.type}</span>
-                            <span className="text-[10px] text-slate-400">{item.ref || (item.file_count ? `${item.file_count} Files` : '')}</span>
-                          </div>
-                          <p className="text-[10px] text-slate-400 mt-1">{item.display_date || item.date} • {item.time}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">{item.type} • {item.time}</p>
                         </div>
                       </div>
                     </motion.div>
                   ))
                 )}
               </AnimatePresence>
-              {filteredHistory.length > 10 && (<div className="p-3 text-center bg-slate-50/30"><p className="text-[10px] text-slate-400">Showing 10 of {filteredHistory.length}</p></div>)}
             </div>
-            {/* Desktop Table View */}
-            <div className="hidden sm:block overflow-x-auto">
+            
+            {/* Desktop Table */}
+            <div className="hidden sm:block">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-slate-50/70">
-                    <th className="text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider py-3 px-5">Time</th>
-                    <th className="text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider py-3 px-5">User</th>
-                    <th className="text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider py-3 px-5">Service</th>
-                    <th className="text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider py-3 px-5">Reference</th>
-                    <th className="text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider py-3 px-5">Status</th>
+                  <tr className="bg-slate-50/50">
+                    <th className="text-left text-[10px] font-medium text-slate-400 uppercase tracking-wider py-2.5 px-4">Time</th>
+                    <th className="text-left text-[10px] font-medium text-slate-400 uppercase tracking-wider py-2.5 px-4">User</th>
+                    <th className="text-left text-[10px] font-medium text-slate-400 uppercase tracking-wider py-2.5 px-4">Service</th>
+                    <th className="text-left text-[10px] font-medium text-slate-400 uppercase tracking-wider py-2.5 px-4">Reference</th>
+                    <th className="text-left text-[10px] font-medium text-slate-400 uppercase tracking-wider py-2.5 px-4">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   <AnimatePresence>
                     {filteredHistory.length === 0 ? (
-                      <tr><td colSpan={5} className="py-12 text-center">
-                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center gap-2">
-                          <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center">
-                            <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
-                          </div>
-                          <span className="text-xs text-slate-400 font-medium">No records found</span>
-                        </motion.div>
-                      </td></tr>
+                      <tr><td colSpan={5} className="py-10 text-center text-xs text-slate-400">No records found</td></tr>
                     ) : (
-                      filteredHistory.slice(0, 15).map((item, index) => (
-                        <motion.tr key={`${item.date}-${item.time}-${index}`} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} transition={{ delay: index * 0.02 }} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="py-3 px-5"><p className="text-xs font-medium text-slate-700">{item.time}</p><p className="text-[10px] text-slate-400">{item.display_date || item.date}</p></td>
-                          <td className="py-3 px-5">
+                      filteredHistory.slice(0, 12).map((item, index) => (
+                        <motion.tr 
+                          key={`${item.date}-${item.time}-${index}`} 
+                          initial={{ opacity: 0 }} 
+                          animate={{ opacity: 1 }} 
+                          transition={{ delay: index * 0.02 }} 
+                          className="hover:bg-slate-50/50"
+                        >
+                          <td className="py-2.5 px-4">
+                            <p className="text-xs text-slate-700 font-medium">{item.time}</p>
+                            <p className="text-[10px] text-slate-400">{item.display_date || item.date}</p>
+                          </td>
+                          <td className="py-2.5 px-4">
                             <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shadow-sm">{item.user?.charAt(0).toUpperCase() || '?'}</div>
-                              <span className="text-xs text-slate-700 font-medium">{item.user}</span>
+                              <div className="w-6 h-6 bg-slate-900 rounded-md flex items-center justify-center text-white text-[10px] font-medium">
+                                {item.user?.charAt(0).toUpperCase() || '?'}
+                              </div>
+                              <span className="text-xs text-slate-700">{item.user}</span>
                             </div>
                           </td>
-                          <td className="py-3 px-5"><span className={`inline-flex px-2.5 py-1 text-[10px] font-medium rounded-full ${getTypeBadge(item.type)}`}>{item.type}</span></td>
-                          <td className="py-3 px-5 text-xs text-slate-500 font-medium">{item.ref || (item.file_count ? `${item.file_count} Files` : '—')}</td>
-                          <td className="py-3 px-5">
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full ${
-                              item.status === 'failed' 
-                                ? 'bg-red-50 text-red-600 ring-1 ring-red-200' 
-                                : 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200'
+                          <td className="py-2.5 px-4">
+                            <span className={`px-2 py-1 text-[10px] font-medium rounded-md ${getTypeBadge(item.type)}`}>{item.type}</span>
+                          </td>
+                          <td className="py-2.5 px-4 text-xs text-slate-500">{item.ref || '—'}</td>
+                          <td className="py-2.5 px-4">
+                            <span className={`px-2 py-1 text-[10px] font-medium rounded-md ${
+                              item.status === 'failed' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'
                             }`}>
-                              {item.status === 'failed' ? (
-                                <><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>Failed</>
-                              ) : (
-                                <><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>Success</>
-                              )}
+                              {item.status === 'failed' ? 'Failed' : 'Success'}
                             </span>
                           </td>
                         </motion.tr>
@@ -737,355 +923,276 @@ export default function DashboardPage() {
                   </AnimatePresence>
                 </tbody>
               </table>
+              {filteredHistory.length > 12 && (
+                <div className="py-2 text-center border-t border-slate-50">
+                  <p className="text-[10px] text-slate-400">Showing 12 of {filteredHistory.length}</p>
+                </div>
+              )}
             </div>
-            {filteredHistory.length > 15 && (<div className="p-3 text-center border-t border-slate-50 bg-slate-50/30"><p className="text-[10px] text-slate-400">Showing 15 of {filteredHistory.length} records</p></div>)}
           </div>
-        </motion.div>
+        </motion.section>
       </motion.div>
     );
   }
 
   // ============ USER DASHBOARD ============
   return (
-    <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-8">
-      {/* Simple Header - Matching Admin Style */}
-      <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+    <motion.div variants={pageVariants} initial="hidden" animate="visible" className="space-y-5">
+      {/* Minimal Header */}
+      <motion.header variants={fadeInUp} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-teal-50 to-emerald-50 rounded-full mb-3 border border-teal-100/50"
-          >
-            <motion.span 
-              animate={{ scale: [1, 1.3, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-              className="w-2 h-2 bg-gradient-to-r from-teal-500 to-emerald-500 rounded-full"
-            />
-            <span className="text-[11px] font-bold text-teal-600 tracking-wide uppercase">{greeting}</span>
-          </motion.div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight">Welcome back, {username}</h1>
-          <p className="text-sm text-slate-500 mt-1.5">Your personalized workspace is ready.</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">Welcome back, {username}</h1>
+          <p className="text-xs text-slate-400 mt-0.5">{greeting} — Your workspace is ready.</p>
         </div>
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-left sm:text-right bg-white/80 backdrop-blur-sm px-5 py-3 rounded-2xl border border-slate-100 shadow-sm"
-        >
-          <p className="text-2xl sm:text-3xl font-light text-slate-700 tabular-nums">{currentTime}</p>
-          <p className="text-xs text-slate-400 mt-1 font-medium">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
+        <motion.div animate={floatAnimation} className="px-3 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-medium">
+          {currentTime}
+        </motion.div>
+      </motion.header>
+
+      {/* User Stats Row */}
+      <motion.div variants={fadeInUp} className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <motion.div variants={scaleIn} whileHover={{ y: -2 }} className="bg-white rounded-xl p-4 border border-slate-100 hover:border-slate-200 hover:shadow-md transition-all">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
+              <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+              </svg>
+            </div>
+            <p className="text-[11px] text-slate-500 font-medium">Today</p>
+          </div>
+          <p className="text-xl font-semibold text-slate-800 tabular-nums">{myTodayCount}</p>
+        </motion.div>
+        <motion.div variants={scaleIn} whileHover={{ y: -2 }} className="bg-white rounded-xl p-4 border border-slate-100 hover:border-slate-200 hover:shadow-md transition-all">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
+              <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+              </svg>
+            </div>
+            <p className="text-[11px] text-slate-500 font-medium">Total</p>
+          </div>
+          <p className="text-xl font-semibold text-slate-800 tabular-nums">{myTotalReports}</p>
+        </motion.div>
+        <motion.div variants={scaleIn} whileHover={{ y: -2 }} className="bg-white rounded-xl p-4 border border-slate-100 hover:border-slate-200 hover:shadow-md transition-all">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
+              <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+              </svg>
+            </div>
+            <p className="text-[11px] text-slate-500 font-medium">Services</p>
+          </div>
+          <p className="text-xl font-semibold text-slate-800 tabular-nums">{allowedServices.length}</p>
+        </motion.div>
+        <motion.div variants={scaleIn} whileHover={{ y: -2 }} className="bg-white rounded-xl p-4 border border-slate-100 hover:border-slate-200 hover:shadow-md transition-all">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
+              <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p className="text-[11px] text-slate-500 font-medium">Weekly</p>
+          </div>
+          <p className="text-xl font-semibold text-slate-800 tabular-nums">{myActivityData.reduce((sum, item) => sum + item.value, 0)}</p>
         </motion.div>
       </motion.div>
 
-      {/* Stats Row */}
-      <motion.div variants={fadeInUp} className="grid grid-cols-2 md:grid-cols-4 gap-5">
-        <motion.div 
-          variants={scaleIn}
-          whileHover={{ y: -6, transition: springTransition }}
-          className="relative bg-white rounded-2xl p-6 border border-slate-200/60 shadow-sm overflow-hidden group"
-        >
-          <motion.div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-500 to-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center shadow-lg">
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Today</span>
-          </div>
-          <AnimatePresence mode="wait">
-            <motion.p 
-              key={myTodayCount}
-              initial={{ opacity: 0, scale: 0.5 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="text-3xl font-bold text-slate-800 tabular-nums"
-            >
-              {myTodayCount}
-            </motion.p>
-          </AnimatePresence>
-          <p className="text-sm text-slate-500 mt-1 font-medium">Today&apos;s Reports</p>
-        </motion.div>
-
-        <motion.div 
-          variants={scaleIn}
-          whileHover={{ y: -6, transition: springTransition }}
-          className="relative bg-white rounded-2xl p-6 border border-slate-200/60 shadow-sm overflow-hidden group"
-        >
-          <motion.div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-green-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center shadow-lg">
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">All Time</span>
-          </div>
-          <AnimatePresence mode="wait">
-            <motion.p 
-              key={myTotalReports}
-              initial={{ opacity: 0, scale: 0.5 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="text-3xl font-bold text-slate-800 tabular-nums"
-            >
-              {myTotalReports}
-            </motion.p>
-          </AnimatePresence>
-          <p className="text-sm text-slate-500 mt-1 font-medium">Total Reports</p>
-        </motion.div>
-
-        <motion.div 
-          variants={scaleIn}
-          whileHover={{ y: -6, transition: springTransition }}
-          className="relative bg-white rounded-2xl p-6 border border-slate-200/60 shadow-sm overflow-hidden group"
-        >
-          <motion.div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg">
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-              </svg>
-            </div>
-            <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Available</span>
-          </div>
-          <p className="text-3xl font-bold text-slate-800 tabular-nums">{allowedServices.length}</p>
-          <p className="text-sm text-slate-500 mt-1 font-medium">Services</p>
-        </motion.div>
-
-        <motion.div 
-          variants={scaleIn}
-          whileHover={{ y: -6, transition: springTransition }}
-          className="relative bg-white rounded-2xl p-6 border border-slate-200/60 shadow-sm overflow-hidden group"
-        >
-          <motion.div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-lg">
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Last 7 Days</span>
-          </div>
-          <p className="text-3xl font-bold text-slate-800 tabular-nums">{myActivityData.reduce((sum, item) => sum + item.value, 0)}</p>
-          <p className="text-sm text-slate-500 mt-1 font-medium">Weekly Activities</p>
-        </motion.div>
-      </motion.div>
-
-      {/* Services */}
-      <motion.div variants={fadeInUp}>
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-base font-bold text-slate-700 flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center">
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-              </svg>
-            </div>
-            Your Services
-          </h2>
-          <span className="text-xs text-slate-400 font-medium bg-slate-100 px-2.5 py-1 rounded-full">{allowedServices.length} available</span>
+      {/* Your Services - Clean Cards */}
+      <motion.section variants={fadeInUp}>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-slate-700">Your Services</h2>
+          <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-1 rounded-full">{allowedServices.length} available</span>
         </div>
         
         {allowedServices.length === 0 ? (
-          <motion.div variants={scaleIn} className="bg-white rounded-2xl p-12 text-center border border-slate-200/60 shadow-sm">
-            <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 2, repeat: Infinity }} className="w-20 h-20 bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl flex items-center justify-center mx-auto mb-5">
-              <svg className="w-10 h-10 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+          <motion.div variants={scaleIn} className="bg-white rounded-xl p-10 text-center border border-slate-100">
+            <motion.div animate={floatAnimation} className="w-14 h-14 bg-slate-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
             </motion.div>
-            <h3 className="text-xl font-bold text-slate-700">No Services Assigned</h3>
-            <p className="text-sm text-slate-500 mt-2 max-w-sm mx-auto">Please contact your administrator to get access to services.</p>
+            <h3 className="text-base font-semibold text-slate-700">No Services Assigned</h3>
+            <p className="text-xs text-slate-400 mt-1">Contact your administrator for access.</p>
           </motion.div>
         ) : (
-          <div className={`grid gap-5 ${allowedServices.length === 1 ? 'grid-cols-1 max-w-md' : allowedServices.length === 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
+          <div className={`grid gap-3 ${allowedServices.length === 1 ? 'grid-cols-1 max-w-md' : allowedServices.length === 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
             {allowedServices.map((permission, index) => {
               const service = serviceConfig[permission];
               if (!service) return null;
               return (
-                <motion.div key={permission} variants={scaleIn} custom={index} whileHover={{ y: -6, transition: springTransition }} whileTap={{ scale: 0.98 }}>
-                  <Link href={service.href} className="block p-6 bg-white rounded-2xl border border-slate-200/60 hover:border-teal-200/50 hover:shadow-lg hover:shadow-teal-500/5 transition-all duration-300 group">
-                    <div className="flex items-start gap-4">
-                      <motion.div whileHover={{ scale: 1.05, rotate: [0, -5, 5, 0] }} transition={{ duration: 0.3 }} className={`w-14 h-14 rounded-xl bg-gradient-to-br ${service.gradient} flex items-center justify-center shadow-lg flex-shrink-0`}>
-                        <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d={service.icon} /></svg>
-                      </motion.div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-base font-bold text-slate-800 group-hover:text-teal-600 transition-colors">{service.title}</h3>
-                        <p className="text-sm text-slate-500 mt-1 line-clamp-2">{service.subtitle}</p>
-                      </div>
-                      <motion.div 
-                        animate={{ x: [0, 4, 0] }} 
-                        transition={{ duration: 1.2, repeat: Infinity }} 
-                        className="w-9 h-9 rounded-lg bg-slate-50 group-hover:bg-teal-50 flex items-center justify-center transition-colors mt-1"
-                      >
-                        <svg className="w-4 h-4 text-slate-300 group-hover:text-teal-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
-                      </motion.div>
+                <motion.div key={permission} variants={scaleIn} custom={index} whileHover={{ x: 2 }} whileTap={{ scale: 0.98 }}>
+                  <Link href={service.href} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-100 hover:border-slate-200 hover:shadow-sm transition-all group">
+                    <div className="w-9 h-9 rounded-lg bg-slate-100 group-hover:bg-slate-200 flex items-center justify-center flex-shrink-0 transition-colors">
+                      <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d={service.icon} /></svg>
                     </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-[13px] font-medium text-slate-700 truncate">{service.title}</h3>
+                      <p className="text-[10px] text-slate-400 truncate">{service.subtitle}</p>
+                    </div>
+                    <ChevronRightIcon className="w-4 h-4 text-slate-300 group-hover:text-slate-500" />
                   </Link>
                 </motion.div>
               );
             })}
           </div>
         )}
-      </motion.div>
+      </motion.section>
 
-      {/* Charts - Same as Admin */}
-      <motion.div variants={fadeInUp} className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <div className="lg:col-span-3 bg-white rounded-2xl p-6 border border-slate-200/60 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-base font-bold text-slate-700">Activity Overview</h3>
-              <p className="text-xs text-slate-400 mt-1">Last 7 days performance</p>
-            </div>
-            <div className="flex gap-4">
-              <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /><span className="text-xs text-slate-500 font-medium">Closing</span></div>
-              <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-blue-500" /><span className="text-xs text-slate-500 font-medium">PO</span></div>
-              <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" /><span className="text-xs text-slate-500 font-medium">Accessories</span></div>
-            </div>
-          </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={serviceChartData}>
-                <defs>
-                  <linearGradient id="userClosingGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#22c55e" stopOpacity={0.2}/><stop offset="95%" stopColor="#22c55e" stopOpacity={0}/></linearGradient>
-                  <linearGradient id="userPoGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient>
-                  <linearGradient id="userAccGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2}/><stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/></linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#94a3b8', fontWeight: 500 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#94a3b8', fontWeight: 500 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ backgroundColor: 'white', border: 'none', borderRadius: '12px', boxShadow: '0 10px 40px rgba(0,0,0,0.12)', padding: '12px 16px', fontSize: '13px' }} />
-                <Area type="monotone" dataKey="Closing" stroke="#22c55e" strokeWidth={2.5} fill="url(#userClosingGrad)" />
-                <Area type="monotone" dataKey="PO" stroke="#3b82f6" strokeWidth={2.5} fill="url(#userPoGrad)" />
-                <Area type="monotone" dataKey="Accessories" stroke="#f59e0b" strokeWidth={2.5} fill="url(#userAccGrad)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-slate-200/60 shadow-sm">
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h3 className="text-base font-bold text-slate-700">Your Activity</h3>
-              <p className="text-xs text-slate-400 mt-1">Work by service type</p>
+      {/* Charts - Minimal Design */}
+      <motion.div variants={fadeInUp} className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <motion.div variants={scaleIn} className="lg:col-span-3 bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-slate-700">Activity Overview</h3>
+            <div className="flex gap-3">
+              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500" /><span className="text-[10px] text-slate-400">Closing</span></div>
+              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-500" /><span className="text-[10px] text-slate-400">PO</span></div>
+              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-500" /><span className="text-[10px] text-slate-400">Others</span></div>
             </div>
           </div>
           <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={serviceChartData}>
+                <defs>
+                  <linearGradient id="userClosingG" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.15}/><stop offset="95%" stopColor="#10b981" stopOpacity={0}/></linearGradient>
+                  <linearGradient id="userPoG" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.15}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient>
+                  <linearGradient id="userAccG" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#f59e0b" stopOpacity={0.15}/><stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/></linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '8px', fontSize: '11px', color: 'white' }} />
+                <Area type="monotone" dataKey="Closing" stroke="#10b981" strokeWidth={2} fill="url(#userClosingG)" />
+                <Area type="monotone" dataKey="PO" stroke="#3b82f6" strokeWidth={2} fill="url(#userPoG)" />
+                <Area type="monotone" dataKey="Accessories" stroke="#f59e0b" strokeWidth={2} fill="url(#userAccG)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.div>
+
+        <motion.div variants={scaleIn} className="lg:col-span-2 bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
+          <h3 className="text-sm font-semibold text-slate-700 mb-4">Your Activity</h3>
+          <div className="h-44">
             {myActivityData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={myActivityData} cx="50%" cy="45%" innerRadius={45} outerRadius={70} paddingAngle={4} dataKey="value" strokeWidth={0}>
+                  <Pie data={myActivityData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={3} dataKey="value" strokeWidth={0}>
                     {myActivityData.map((_, index) => (<Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />))}
                   </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: 'white', border: 'none', borderRadius: '12px', boxShadow: '0 10px 40px rgba(0,0,0,0.12)', fontSize: '13px' }} />
+                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '8px', fontSize: '11px', color: 'white' }} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-slate-400 text-sm">No activity data yet</div>
+              <div className="h-full flex items-center justify-center text-slate-400 text-xs">No activity yet</div>
             )}
           </div>
-          <div className="flex flex-wrap justify-center gap-4 mt-3">
+          <div className="flex flex-wrap justify-center gap-3 mt-2">
             {myActivityData.slice(0, 4).map((item, i) => (
-              <div key={item.name} className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLORS[i] }} />
-                <span className="text-xs text-slate-500 truncate max-w-[80px] font-medium">{item.name}</span>
+              <div key={item.name} className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: CHART_COLORS[i] }} />
+                <span className="text-[10px] text-slate-500 truncate max-w-[60px]">{item.name}</span>
               </div>
             ))}
           </div>
-        </div>
+        </motion.div>
       </motion.div>
 
-      {/* Recent Activity Table */}
-      <motion.div variants={fadeInUp}>
-        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
-          <div className="p-5 sm:p-6 border-b border-slate-100">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h3 className="text-base font-bold text-slate-700 flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center">
-                    <ClockIcon className="w-4 h-4 text-white" />
-                  </div>
-                  Your Recent Activity
-                </h3>
-                <p className="text-xs text-slate-400 mt-1.5 ml-10">Track your work history</p>
-              </div>
-              <div className="flex gap-3">
-                <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="flex-1 sm:flex-none px-4 py-2.5 text-sm bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 cursor-pointer min-w-0 font-medium">
-                  <option value="all">All Types</option>
-                  {allowedServices.map(p => (<option key={p} value={permissionLabels[p] || p}>{permissionLabels[p] || p}</option>))}
-                </select>
-                <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="flex-1 sm:flex-none px-4 py-2.5 text-sm bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 cursor-pointer min-w-0 font-medium">
-                  <option value="all">All Time</option><option value="today">Today</option><option value="week">Week</option><option value="month">Month</option>
-                </select>
-              </div>
+      {/* Recent Activity - Clean Table */}
+      <motion.section variants={fadeInUp}>
+        <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h3 className="text-sm font-semibold text-slate-700">Your Recent Activity</h3>
+            <div className="flex gap-2">
+              <select 
+                value={typeFilter} 
+                onChange={(e) => setTypeFilter(e.target.value)} 
+                className="px-3 py-2 text-xs bg-slate-50 border border-slate-100 rounded-lg focus:outline-none cursor-pointer"
+              >
+                <option value="all">All Types</option>
+                {allowedServices.map(p => (<option key={p} value={permissionLabels[p] || p}>{permissionLabels[p] || p}</option>))}
+              </select>
+              <select 
+                value={dateFilter} 
+                onChange={(e) => setDateFilter(e.target.value)} 
+                className="px-3 py-2 text-xs bg-slate-50 border border-slate-100 rounded-lg focus:outline-none cursor-pointer"
+              >
+                <option value="all">All Time</option>
+                <option value="today">Today</option>
+                <option value="week">Week</option>
+              </select>
             </div>
           </div>
-          {/* Mobile Card View for User Activity */}
-          <div className="sm:hidden divide-y divide-slate-100">
+          
+          {/* Mobile View */}
+          <div className="sm:hidden divide-y divide-slate-50">
             <AnimatePresence>
               {filteredHistory.length === 0 ? (
-                <div className="py-12 text-center">
-                  <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center gap-2">
-                    <motion.div animate={{ y: [0, -4, 0] }} transition={{ duration: 2, repeat: Infinity }} className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center">
-                      <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
-                    </motion.div>
-                    <span className="text-xs text-slate-400 font-medium">No activity yet</span>
-                  </motion.div>
-                </div>
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-10 text-center">
+                  <p className="text-xs text-slate-400">No activity yet</p>
+                </motion.div>
               ) : (
                 filteredHistory.slice(0, 8).map((item, index) => (
-                  <motion.div key={`user-mobile-${item.date}-${item.time}-${index}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4">
-                    <div className="flex items-start justify-between gap-3">
+                  <motion.div 
+                    key={`user-mobile-${item.date}-${item.time}-${index}`} 
+                    initial={{ opacity: 0, x: -10 }} 
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.03 }}
+                    className="p-3"
+                  >
+                    <div className="flex items-center justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className={`inline-flex px-2 py-0.5 text-[10px] font-medium rounded-full ${getTypeBadge(item.type)}`}>{item.type}</span>
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full ${item.status === 'failed' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                            {item.status === 'failed' ? 'Failed' : 'Success'}
+                        <div className="flex items-center gap-2">
+                          <span className={`px-1.5 py-0.5 text-[9px] font-medium rounded ${getTypeBadge(item.type)}`}>{item.type}</span>
+                          <span className={`px-1.5 py-0.5 text-[9px] font-medium rounded ${
+                            item.status === 'failed' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'
+                          }`}>
+                            {item.status === 'failed' ? 'Failed' : 'OK'}
                           </span>
                         </div>
-                        <p className="text-sm text-slate-700 font-medium truncate">{item.ref || (item.file_count ? `${item.file_count} Files` : '—')}</p>
-                        <p className="text-[10px] text-slate-400 mt-1">{item.display_date || item.date} • {item.time}</p>
+                        <p className="text-xs text-slate-600 truncate mt-1">{item.ref || '—'}</p>
+                        <p className="text-[10px] text-slate-400">{item.time}</p>
                       </div>
                     </div>
                   </motion.div>
                 ))
               )}
             </AnimatePresence>
-            {filteredHistory.length > 8 && (<div className="p-3 text-center bg-slate-50/30"><p className="text-[10px] text-slate-400">Showing 8 of {filteredHistory.length}</p></div>)}
           </div>
-          {/* Desktop Table View */}
-          <div className="hidden sm:block overflow-x-auto">
+          
+          {/* Desktop Table */}
+          <div className="hidden sm:block">
             <table className="w-full">
               <thead>
-                <tr className="bg-slate-50/70">
-                  <th className="text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider py-3 px-5">Time</th>
-                  <th className="text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider py-3 px-5">Service</th>
-                  <th className="text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider py-3 px-5">Reference</th>
-                  <th className="text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider py-3 px-5">Status</th>
+                <tr className="bg-slate-50/50">
+                  <th className="text-left text-[10px] font-medium text-slate-400 uppercase tracking-wider py-2.5 px-4">Time</th>
+                  <th className="text-left text-[10px] font-medium text-slate-400 uppercase tracking-wider py-2.5 px-4">Service</th>
+                  <th className="text-left text-[10px] font-medium text-slate-400 uppercase tracking-wider py-2.5 px-4">Reference</th>
+                  <th className="text-left text-[10px] font-medium text-slate-400 uppercase tracking-wider py-2.5 px-4">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
                 <AnimatePresence>
                   {filteredHistory.length === 0 ? (
-                    <tr><td colSpan={4} className="py-12 text-center">
-                      <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center gap-2">
-                        <motion.div animate={{ y: [0, -4, 0] }} transition={{ duration: 2, repeat: Infinity }} className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center">
-                          <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
-                        </motion.div>
-                        <span className="text-xs text-slate-400 font-medium">No activity yet. Start using your services!</span>
-                      </motion.div>
-                    </td></tr>
+                    <tr><td colSpan={4} className="py-10 text-center text-xs text-slate-400">No activity yet. Start using services!</td></tr>
                   ) : (
                     filteredHistory.slice(0, 10).map((item, index) => (
-                      <motion.tr key={`${item.date}-${item.time}-${index}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ delay: index * 0.03 }} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="py-3 px-5"><p className="text-xs font-medium text-slate-700">{item.time}</p><p className="text-[10px] text-slate-400">{item.display_date || item.date}</p></td>
-                        <td className="py-3 px-5"><span className={`inline-flex px-2.5 py-1 text-[10px] font-medium rounded-full ${getTypeBadge(item.type)}`}>{item.type}</span></td>
-                        <td className="py-3 px-5 text-xs text-slate-500 font-medium">{item.ref || (item.file_count ? `${item.file_count} Files` : '—')}</td>
-                        <td className="py-3 px-5">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full ${
-                            item.status === 'failed' 
-                              ? 'bg-red-50 text-red-600 ring-1 ring-red-200' 
-                              : 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200'
+                      <motion.tr 
+                        key={`${item.date}-${item.time}-${index}`} 
+                        initial={{ opacity: 0 }} 
+                        animate={{ opacity: 1 }} 
+                        transition={{ delay: index * 0.02 }} 
+                        className="hover:bg-slate-50/50"
+                      >
+                        <td className="py-2.5 px-4">
+                          <p className="text-xs text-slate-700 font-medium">{item.time}</p>
+                          <p className="text-[10px] text-slate-400">{item.display_date || item.date}</p>
+                        </td>
+                        <td className="py-2.5 px-4">
+                          <span className={`px-2 py-1 text-[10px] font-medium rounded-md ${getTypeBadge(item.type)}`}>{item.type}</span>
+                        </td>
+                        <td className="py-2.5 px-4 text-xs text-slate-500">{item.ref || '—'}</td>
+                        <td className="py-2.5 px-4">
+                          <span className={`px-2 py-1 text-[10px] font-medium rounded-md ${
+                            item.status === 'failed' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'
                           }`}>
-                            {item.status === 'failed' ? (
-                              <><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>Failed</>
-                            ) : (
-                              <><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>Success</>
-                            )}
+                            {item.status === 'failed' ? 'Failed' : 'Success'}
                           </span>
                         </td>
                       </motion.tr>
@@ -1094,10 +1201,14 @@ export default function DashboardPage() {
                 </AnimatePresence>
               </tbody>
             </table>
+            {filteredHistory.length > 10 && (
+              <div className="py-2 text-center border-t border-slate-50">
+                <p className="text-[10px] text-slate-400">Showing 10 of {filteredHistory.length}</p>
+              </div>
+            )}
           </div>
-          {filteredHistory.length > 10 && (<div className="p-3 text-center border-t border-slate-50 bg-slate-50/30"><p className="text-[10px] text-slate-400">Showing 10 of {filteredHistory.length} records</p></div>)}
         </div>
-      </motion.div>
+      </motion.section>
     </motion.div>
   );
 }
