@@ -586,50 +586,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-slate-50">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="flex flex-col items-center gap-6"
-        >
-          <div className="relative">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
-              className="w-16 h-16 border-4 border-slate-200 border-t-teal-500 rounded-full"
-            />
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="absolute inset-0 flex items-center justify-center"
-            >
-              <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
-                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-            </motion.div>
-          </div>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-6">
+          <Logo size="xl" animate={true} />
           <div className="text-center">
-            <motion.p
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="text-sm font-semibold text-slate-700"
-            >
-              Loading Dashboard
-            </motion.p>
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: [0.5, 1, 0.5] }}
-              transition={{ duration: 2, repeat: Infinity }}
-              className="text-xs text-slate-400 mt-1"
-            >
-              Please wait...
-            </motion.p>
+            <p className="text-sm font-semibold text-slate-700">Loading Dashboard</p>
+            <p className="text-xs text-slate-400 mt-1">Please wait...</p>
           </div>
-        </motion.div>
+        </div>
       </div>
     );
   }
@@ -840,9 +804,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium ${
                       userData?.role === 'admin' 
                         ? 'bg-slate-800 text-white' 
+                        : userData?.role === 'moderator'
+                        ? 'bg-amber-100 text-amber-700'
                         : 'bg-slate-100 text-slate-600'
                     }`}>
-                      {userData?.role === 'admin' ? 'Admin' : 'User'}
+                      {userData?.role === 'admin' ? 'Admin' : userData?.role === 'moderator' ? 'Moderator' : 'User'}
                     </span>
                   </div>
                 </div>

@@ -21,12 +21,9 @@ interface RouteParams {
 async function sendModeratorNotification(actionBy: string, action: 'edit' | 'delete', bookingRef: string, message: string) {
   try {
     const collection = await getCollection(COLLECTIONS.NOTIFICATIONS);
-    
-    // Get existing notifications or create new record
-    const record = await collection.findOne({ type: 'admin_notifications' });
+    // Use correct filter for admin notifications (_id: 'admin_notifications')
+    const record = await collection.findOne({ _id: 'admin_notifications' });
     const notifications = record?.notifications || [];
-    
-    // Create new notification
     const newNotification = {
       id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       type: action === 'delete' ? 'warning' : 'info',
@@ -39,16 +36,11 @@ async function sendModeratorNotification(actionBy: string, action: 'edit' | 'del
       read: false,
       bookingRef,
     };
-    
-    // Add to beginning of array
     notifications.unshift(newNotification);
-    
-    // Keep only last 50 notifications
     const trimmedNotifications = notifications.slice(0, 50);
-    
-    await collection.updateOne(
-      { type: 'admin_notifications' },
-      { $set: { notifications: trimmedNotifications, updatedAt: new Date().toISOString() } },
+    await collection.replaceOne(
+      { _id: 'admin_notifications' },
+      { _id: 'admin_notifications', notifications: trimmedNotifications },
       { upsert: true }
     );
   } catch (error) {

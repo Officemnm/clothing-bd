@@ -258,7 +258,7 @@ function LoginContent() {
                   disabled={isLoading}
                   whileHover={{ scale: 1.01, y: -1 }}
                   whileTap={{ scale: 0.99 }}
-                  className="w-full py-3.5 px-4 bg-gradient-to-r from-teal-500 to-teal-600 text-white text-sm font-semibold rounded-xl shadow-lg shadow-teal-500/25 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed transition-all hover:from-teal-600 hover:to-teal-700"
+                  className="w-full py-3.5 px-4 bg-slate-700 text-white text-sm font-semibold rounded-xl shadow-lg flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed transition-all hover:bg-slate-800"
                 >
                   <AnimatePresence mode="wait">
                     {isLoading ? (
@@ -269,11 +269,9 @@ function LoginContent() {
                         exit={{ opacity: 0 }}
                         className="flex items-center gap-2"
                       >
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                          className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
-                        />
+                        <span className="w-4 h-4 block">
+                          <span className="w-4 h-4 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin inline-block align-middle" />
+                        </span>
                         <span>Signing in...</span>
                       </motion.div>
                     ) : (
@@ -315,7 +313,13 @@ export default function LoginPage() {
   return (
     <Suspense fallback={
       <div className="min-h-[100dvh] w-full flex items-center justify-center bg-slate-50">
-        <Logo size="xl" animate={true} />
+        <div className="flex flex-col items-center gap-6">
+          <Logo size="xl" animate={true} />
+          <div className="text-center">
+            <p className="text-sm font-semibold text-slate-700">Loading</p>
+            <p className="text-xs text-slate-400 mt-1">Please wait...</p>
+          </div>
+        </div>
       </div>
     }>
       <LoginContent />
