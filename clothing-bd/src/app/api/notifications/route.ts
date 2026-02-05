@@ -16,12 +16,12 @@ export interface Notification {
 }
 
 interface NotificationsDocument {
-  _id: string;
+  docId: string;
   notifications: Notification[];
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const createFilter = (id: string): any => ({ _id: id });
+const createFilter = (id: string): any => ({ docId: id });
 
 // GET - Fetch all notifications for admin
 export async function GET() {
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
 
     await collection.replaceOne(
       createFilter('admin_notifications'),
-      { _id: 'admin_notifications', notifications: trimmedNotifications },
+      { docId: 'admin_notifications', notifications: trimmedNotifications },
       { upsert: true }
     );
 
@@ -158,7 +158,7 @@ export async function PUT(request: NextRequest) {
 
     await collection.replaceOne(
       createFilter('admin_notifications'),
-      { _id: 'admin_notifications', notifications },
+      { docId: 'admin_notifications', notifications },
       { upsert: true }
     );
 
@@ -191,7 +191,7 @@ export async function DELETE() {
     
     await collection.replaceOne(
       createFilter('admin_notifications'),
-      { _id: 'admin_notifications', notifications: [] },
+      { docId: 'admin_notifications', notifications: [] },
       { upsert: true }
     );
 

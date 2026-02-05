@@ -21,8 +21,8 @@ interface RouteParams {
 async function sendModeratorNotification(actionBy: string, action: 'edit' | 'delete', bookingRef: string, message: string) {
   try {
     const collection = await getCollection(COLLECTIONS.NOTIFICATIONS);
-    // Use correct filter for admin notifications (_id: 'admin_notifications')
-    const record = await collection.findOne({ _id: 'admin_notifications' });
+    // Use docId field for admin notifications document
+    const record = await collection.findOne({ docId: 'admin_notifications' });
     const notifications = record?.notifications || [];
     const newNotification = {
       id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -39,8 +39,8 @@ async function sendModeratorNotification(actionBy: string, action: 'edit' | 'del
     notifications.unshift(newNotification);
     const trimmedNotifications = notifications.slice(0, 50);
     await collection.replaceOne(
-      { _id: 'admin_notifications' },
-      { _id: 'admin_notifications', notifications: trimmedNotifications },
+      { docId: 'admin_notifications' },
+      { docId: 'admin_notifications', notifications: trimmedNotifications },
       { upsert: true }
     );
   } catch (error) {
