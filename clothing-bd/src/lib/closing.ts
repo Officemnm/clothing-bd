@@ -28,43 +28,48 @@ export async function fetchClosingReportData(internalRefNo: string): Promise<Rep
   const reportUrl = process.env.ERP_REPORT_URL!;
   const years = ['2026', '2025', '2024', '2023'];
   const companyIds = [1, 2, 3, 4, 5];
+  // Try with location '2' first, then fallback to '0' if no data found
+  const locationParams = ['2', '0'];
 
   let foundData: string | null = null;
 
-  for (const year of years) {
-    for (const companyId of companyIds) {
-      const formData = new URLSearchParams();
-      formData.append('action', 'report_generate');
-      formData.append('cbo_wo_company_name', '2');
-      formData.append('cbo_location_name', '2');
-      formData.append('cbo_floor_id', '0');
-      formData.append('cbo_buyer_name', '0');
-      formData.append('txt_internal_ref_no', internalRefNo);
-      formData.append('reportType', '3');
-      formData.append('cbo_year_selection', year);
-      formData.append('cbo_company_name', companyId.toString());
+  for (const locationValue of locationParams) {
+    for (const year of years) {
+      for (const companyId of companyIds) {
+        const formData = new URLSearchParams();
+        formData.append('action', 'report_generate');
+        formData.append('cbo_wo_company_name', locationValue);
+        formData.append('cbo_location_name', locationValue);
+        formData.append('cbo_floor_id', '0');
+        formData.append('cbo_buyer_name', '0');
+        formData.append('txt_internal_ref_no', internalRefNo);
+        formData.append('reportType', '3');
+        formData.append('cbo_year_selection', year);
+        formData.append('cbo_company_name', companyId.toString());
 
-      try {
-        const response = await fetch(reportUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Cookie': cookies,
-          },
-          body: formData.toString(),
-        });
+        try {
+          const response = await fetch(reportUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+              'Cookie': cookies,
+            },
+            body: formData.toString(),
+          });
 
-        if (response.ok) {
-          const text = await response.text();
-          if (!text.includes('Data not Found') && text.length > 500) {
-            foundData = text;
-            break;
+          if (response.ok) {
+            const text = await response.text();
+            if (!text.includes('Data not Found') && text.length > 500) {
+              foundData = text;
+              break;
+            }
           }
+        } catch {
+          continue;
         }
-      } catch {
-        continue;
       }
+      if (foundData) break;
     }
     if (foundData) break;
   }
