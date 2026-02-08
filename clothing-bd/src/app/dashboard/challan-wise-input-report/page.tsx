@@ -29,18 +29,29 @@ export default function ChallanWiseInputReportPage() {
 
     try {
       const params = new URLSearchParams({ booking: booking.trim() });
-      const response = await fetch(`/api/challan-report?${params.toString()}`);
-      const data = await response.json();
+      
+      if (version === 'v2') {
+        // V2 uses color-wise report
+        const response = await fetch(`/api/color-wise-report?${params.toString()}`);
+        const data = await response.json();
 
-      if (data.success) {
-        sessionStorage.setItem('challanReportData', JSON.stringify(data));
-        if (version === 'v2') {
-          router.push('/challan-preview-v2');
+        if (data.success) {
+          sessionStorage.setItem('colorWiseReportData', JSON.stringify(data));
+          router.push('/color-wise-preview');
         } else {
-          router.push('/challan-preview');
+          setError(data.message || 'Failed to fetch data');
         }
       } else {
-        setError(data.message || 'Failed to fetch data');
+        // V1 uses challan report
+        const response = await fetch(`/api/challan-report?${params.toString()}`);
+        const data = await response.json();
+
+        if (data.success) {
+          sessionStorage.setItem('challanReportData', JSON.stringify(data));
+          router.push('/challan-preview');
+        } else {
+          setError(data.message || 'Failed to fetch data');
+        }
       }
     } catch {
       setError('Connection error. Please try again.');
@@ -176,7 +187,7 @@ export default function ChallanWiseInputReportPage() {
       >
         <p className="text-xs text-slate-600">
           <span className="font-medium">V1:</span> Detailed view.
-          <span className="font-medium ml-2">V2:</span> Simplified for printing.
+          <span className="font-medium ml-2">V2:</span> Color wise grouped report.
         </p>
       </motion.div>
     </div>
