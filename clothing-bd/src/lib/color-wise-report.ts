@@ -44,16 +44,13 @@ interface ChallanDetails {
   systemId: string;
 }
 
-// URLs - Python থেকে হুবহু
-const LOGIN_URL = 'http://180.92.235.190:8022/erp/login.php';
-const CREDENTIALS = {
-  txt_userid: 'input1.clothing-cutting',
-  txt_password: '123456',
-  submit: 'Login'
-};
+// URLs & credentials from environment variables
+const LOGIN_URL = process.env.ERP_LOGIN_URL || '';
+const ERP_USERNAME = process.env.ERP_USERNAME || '';
+const ERP_PASSWORD = process.env.ERP_PASSWORD || '';
 
-const URL_1 = 'http://180.92.235.190:8022/erp/production/reports/requires/sewing_input_challan_controller.php';
-const URL_2 = 'http://180.92.235.190:8022/erp/production/requires/bundle_wise_sewing_input_controller.php';
+const URL_1 = process.env.ERP_CHALLAN_REPORT_URL || '';
+const URL_2 = process.env.ERP_BUNDLE_CONTROLLER_URL || '';
 
 // Python: USER_AGENTS = [...]
 const USER_AGENTS = [
@@ -73,10 +70,15 @@ async function createSingleLoginSession(): Promise<string | null> {
   const userAgent = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
   
   try {
+    if (!LOGIN_URL || !ERP_USERNAME || !ERP_PASSWORD) {
+      console.error('[Color Wise] Missing ERP credentials in environment');
+      return null;
+    }
+
     const formData = new URLSearchParams();
-    formData.append('txt_userid', CREDENTIALS.txt_userid);
-    formData.append('txt_password', CREDENTIALS.txt_password);
-    formData.append('submit', CREDENTIALS.submit);
+    formData.append('txt_userid', ERP_USERNAME);
+    formData.append('txt_password', ERP_PASSWORD);
+    formData.append('submit', 'Login');
 
     const response = await fetch(LOGIN_URL, {
       method: 'POST',
@@ -412,9 +414,9 @@ export async function fetchColorWiseReport(booking: string): Promise<ColorWiseRe
             
             // Extract only DD-MM-YYYY from date string
             let date = meta.date;
-            const dateMatch = date.match(/\d{2}-\d{2}-\d{4}/);
+            const dateMatch = date.match(/\d{2}[-\/\.]\d{2}[-\/\.]\d{4}/);
             if (dateMatch) date = dateMatch[0];
-            else date = date.substring(0, 11);
+            else date = date.substring(0, 10).trim();
             return {
               challan: challanNo,
               date,

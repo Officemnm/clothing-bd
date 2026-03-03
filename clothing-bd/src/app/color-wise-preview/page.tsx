@@ -82,8 +82,11 @@ export default function ColorWisePreviewPage() {
   const handleBack = () => router.back();
 
   const handleOpenBundle = (item: ColorWiseChallanItem) => {
-    const url = `http://180.92.235.190:8022/erp/production/requires/bundle_wise_sewing_input_controller.php?data=${item.companyId}*${item.systemId}*3*%E2%9D%8F%20Bundle%20Wise%20Sewing%20Input*undefined*undefined*undefined*1&action=sewing_input_challan_print_5`;
-    window.open(url, '_blank');
+    const params = new URLSearchParams({
+      companyId: String(item.companyId),
+      systemId: item.systemId,
+    });
+    window.open(`/api/challan-bundle?${params.toString()}`, '_blank');
   };
 
   const handleScreenshot = async () => {
