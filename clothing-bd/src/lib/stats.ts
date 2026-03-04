@@ -46,21 +46,34 @@ export type ReportType =
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const createFilter = (id: string): any => ({ _id: id });
 
-// Get current time in Bangladesh timezone (UTC+6)
-function getBangladeshTime(): Date {
-  // Create date in Bangladesh timezone
+// Format current time fields directly in Bangladesh timezone (UTC+6)
+// Using timeZone directly in format calls avoids any server-timezone dependency
+function getBDDateFields(): { date: string; display_date: string; time: string } {
   const now = new Date();
-  // Convert to Bangladesh time by adding 6 hours to UTC
-  const bdTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Dhaka' }));
-  return bdTime;
-}
-
-// Format date as DD-MM-YYYY for Bangladesh time
-function formatDateBD(date: Date): string {
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const year = date.getFullYear();
-  return `${day}-${month}-${year}`;
+  // DD-MM-YYYY
+  const dateParts = now.toLocaleDateString('en-GB', {
+    timeZone: 'Asia/Dhaka',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).split('/');
+  const date = `${dateParts[0]}-${dateParts[1]}-${dateParts[2]}`;
+  // "04 Mar 2026"
+  const display_date = now.toLocaleDateString('en-GB', {
+    timeZone: 'Asia/Dhaka',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+  // "09:00:00 AM"
+  const time = now.toLocaleTimeString('en-US', {
+    timeZone: 'Asia/Dhaka',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  });
+  return { date, display_date, time };
 }
 
 // Parse date helper (DD-MM-YYYY to Date object)
@@ -156,7 +169,7 @@ export async function getDashboardStats() {
     challan: { count: challanCount },
     hourly: { count: hourlyCount },
     sewingClosing: { count: sewingClosingCount },
-    history: sortedHistory.slice(0, 100), // Return last 100 items sorted
+    history: sortedHistory.slice(0, 500), // Return last 500 items for pagination
     chart: chartData,
     userUsage,
   };
@@ -173,10 +186,15 @@ function generateChartData(history: HistoryItem[]) {
 
   // Generate last 7 days in Bangladesh timezone
   for (let i = 6; i >= 0; i--) {
-    const bdNow = getBangladeshTime();
-    bdNow.setDate(bdNow.getDate() - i);
-    const dateStr = formatDateBD(bdNow); // DD-MM-YYYY format
-    const label = bdNow.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+    // Offset today by i days in BD time
+    const offsetMs = new Date().getTime() - i * 24 * 60 * 60 * 1000;
+    const offsetDate = new Date(offsetMs);
+    const dateParts = offsetDate.toLocaleDateString('en-GB', {
+      timeZone: 'Asia/Dhaka',
+      day: '2-digit', month: '2-digit', year: 'numeric',
+    }).split('/');
+    const dateStr = `${dateParts[0]}-${dateParts[1]}-${dateParts[2]}`; // DD-MM-YYYY
+    const label = offsetDate.toLocaleDateString('en-GB', { timeZone: 'Asia/Dhaka', day: '2-digit', month: 'short' });
     
     labels.push(label);
     
@@ -266,13 +284,13 @@ export async function addHistoryRecord(
   const statsCol = await getCollection(COLLECTIONS.STATS);
   
   // Use Bangladesh timezone for all date/time
-  const bdTime = getBangladeshTime();
+  const { date, display_date, time } = getBDDateFields();
   const newRecord: HistoryItem = {
     ref,
     user: username,
-    date: formatDateBD(bdTime), // DD-MM-YYYY format for consistency
-    display_date: bdTime.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-    time: bdTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }),
+    date,
+    display_date,
+    time,
     type,
     iso_time: new Date().toISOString(), // Keep ISO time for accurate sorting
     status,

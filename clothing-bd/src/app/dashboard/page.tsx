@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell,
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import {
   ChartBarIcon,
@@ -20,7 +20,7 @@ import {
   XCircleIcon,
   FunnelIcon,
   MagnifyingGlassIcon,
-  ChevronRightIcon,
+  ChevronDownIcon,
 } from '@heroicons/react/24/outline';
 import {
   ChartBarIcon as ChartBarIconSolid,
@@ -150,63 +150,164 @@ const permissionLabels: Record<string, string> = {
 // Service configs - NO PURPLE
 const serviceConfig: Record<string, { 
   href: string; title: string; subtitle: string; icon: string; 
-  gradient: string; bgGradient: string; iconBg: string;
+  gradient: string; bgGradient: string; iconBg: string; accentColor: string;
 }> = {
   'closing': {
     href: '/dashboard/closing-report',
     title: 'Closing Report',
     subtitle: 'Generate closing reports from ERP data',
-    icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+    icon: 'M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z',
     gradient: 'from-emerald-500 to-teal-600',
     bgGradient: 'from-emerald-50/80 to-teal-50/80',
     iconBg: 'bg-emerald-500',
+    accentColor: '#10b981',
   },
   'po_sheet': {
     href: '/dashboard/po-generator',
     title: 'PO Generator',
     subtitle: 'Process and generate PO sheets',
-    icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+    icon: 'M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9z',
     gradient: 'from-blue-500 to-cyan-600',
     bgGradient: 'from-blue-50/80 to-cyan-50/80',
     iconBg: 'bg-blue-500',
+    accentColor: '#3b82f6',
   },
   'accessories': {
     href: '/dashboard/accessories',
     title: 'Accessories',
-    subtitle: 'Track and manage challans',
-    icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
+    subtitle: 'Track and manage accessories',
+    icon: 'M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9',
     gradient: 'from-amber-500 to-orange-600',
     bgGradient: 'from-amber-50/80 to-orange-50/80',
     iconBg: 'bg-amber-500',
+    accentColor: '#f59e0b',
   },
   'sewing_closing_report': {
     href: '/dashboard/sewing-closing-report',
     title: 'Sewing Closing Report',
     subtitle: 'Sewing input & output report',
-    icon: 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2',
+    icon: 'M6 6.878V6a2.25 2.25 0 0 1 2.25-2.25h7.5A2.25 2.25 0 0 1 18 6v.878m-12 0c.235-.083.487-.128.75-.128h10.5c.263 0 .515.045.75.128m-12 0A2.25 2.25 0 0 0 4.5 9v.878m13.5-3A2.25 2.25 0 0 1 19.5 9v.878m0 0a2.246 2.246 0 0 0-.75-.128H5.25c-.263 0-.515.045-.75.128m15 0A2.25 2.25 0 0 1 21 12v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6c0-.98.626-1.813 1.5-2.122',
     gradient: 'from-rose-500 to-pink-600',
     bgGradient: 'from-rose-50/80 to-pink-50/80',
     iconBg: 'bg-rose-500',
+    accentColor: '#f43f5e',
   },
   'daily_line_wise_input_report': {
     href: '/dashboard/daily-line-wise-input-report',
     title: 'Daily Line Wise Input',
     subtitle: 'Hourly production monitoring report',
-    icon: 'M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z',
+    icon: 'M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0z',
     gradient: 'from-sky-500 to-blue-600',
     bgGradient: 'from-sky-50/80 to-blue-50/80',
     iconBg: 'bg-sky-500',
+    accentColor: '#0ea5e9',
   },
   'challan_wise_input_report': {
     href: '/dashboard/challan-wise-input-report',
     title: 'Challan Wise Input',
     subtitle: 'Challan wise production report',
-    icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01',
+    icon: 'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-6 9 2 2 4-4',
     gradient: 'from-violet-500 to-purple-600',
     bgGradient: 'from-violet-50/80 to-purple-50/80',
     iconBg: 'bg-violet-500',
+    accentColor: '#8b5cf6',
   },
 };
+
+// ─── Premium Dropdown Component ──────────────────────────────────────────────
+interface DropdownOption { value: string; label: string; }
+
+function DropdownSelect({
+  value,
+  onChange,
+  options,
+  align = 'right',
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: DropdownOption[];
+  align?: 'left' | 'right';
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const selected = options.find(o => o.value === value);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <motion.button
+        onClick={() => setOpen(!open)}
+        whileTap={{ scale: 0.97 }}
+        className={`flex items-center gap-2 px-3 py-2 text-xs font-medium bg-white border rounded-xl hover:border-slate-300 transition-all shadow-sm select-none ${
+          open ? 'border-slate-400 ring-2 ring-slate-900/5 bg-slate-50' : 'border-slate-200 hover:bg-slate-50'
+        }`}
+      >
+        <span className="text-slate-700 whitespace-nowrap">{selected?.label ?? value}</span>
+        <motion.span
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ duration: 0.2, ease: 'easeInOut' }}
+          className="flex-shrink-0"
+        >
+          <ChevronDownIcon className="w-3.5 h-3.5 text-slate-400" />
+        </motion.span>
+      </motion.button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.96 }}
+            transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+            className={`absolute top-full mt-2 min-w-[150px] bg-white rounded-2xl border border-slate-100 shadow-2xl shadow-slate-900/10 z-50 overflow-hidden py-1.5 ${
+              align === 'left' ? 'left-0' : 'right-0'
+            }`}
+          >
+            {/* Subtle header line */}
+            <div className="px-3.5 pb-1.5 mb-0.5 border-b border-slate-50">
+              <div className="flex items-center gap-1.5">
+                <div className="w-1 h-1 rounded-full bg-slate-300" />
+                <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest">
+                  {options[0]?.label?.includes('Type') || options[0]?.label === 'All' || options[0]?.label === 'All Types' ? 'Filter' : 'Period'}
+                </span>
+              </div>
+            </div>
+            {options.map((opt, i) => (
+              <motion.button
+                key={opt.value}
+                onClick={() => { onChange(opt.value); setOpen(false); }}
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.03, duration: 0.15 }}
+                className={`w-full flex items-center justify-between px-3.5 py-2 text-xs transition-all ${
+                  value === opt.value
+                    ? 'bg-slate-900 text-white font-semibold mx-1.5 rounded-lg' 
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                }`}
+                style={ value === opt.value ? { width: 'calc(100% - 12px)' } : {}}
+              >
+                <span>{opt.label}</span>
+                {value === opt.value && (
+                  <svg className="w-3 h-3 flex-shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </motion.button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+// ──────────────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
@@ -218,6 +319,8 @@ export default function DashboardPage() {
   const [greeting, setGreeting] = useState('');
   const [currentTime, setCurrentTime] = useState('');
   const [sessionKey, setSessionKey] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 30;
 
   useEffect(() => {
     const updateTime = () => {
@@ -433,6 +536,25 @@ export default function DashboardPage() {
     });
   }, [stats, searchQuery, typeFilter, dateFilter, isAdmin, username, parseDate]);
 
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, typeFilter, dateFilter]);
+
+  // Today's total count (admin = all users, user = own)
+  const allTodayCount = useMemo(() => {
+    if (!stats?.history) return 0;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const base = isAdmin ? stats.history : stats.history.filter(h => h.user?.toLowerCase() === username.toLowerCase());
+    return base.filter(h => parseDate(h.date) >= today).length;
+  }, [stats, isAdmin, username, parseDate]);
+
+  const totalPages = Math.ceil(filteredHistory.length / ITEMS_PER_PAGE);
+  const paginatedHistory = filteredHistory.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
   const getTypeBadge = (type: string) => {
     switch (type) {
       case 'Closing Report': return 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200';
@@ -544,22 +666,22 @@ export default function DashboardPage() {
 
   // ============ ADMIN DASHBOARD ============
   if (isAdmin) {
-    // Key metrics - simplified to 4 main stats with glass morphism
+    // Key metrics
     const keyMetrics = [
-      { id: 'total', label: 'Total Reports', value: (stats?.closing.count || 0) + (stats?.po.count || 0) + (stats?.accessories.count || 0) + (stats?.challan?.count || 0) + (stats?.hourly?.count || 0) + (stats?.sewingClosing?.count || 0), iconType: 'chart', accent: '#64748b' },
-      { id: 'today', label: 'Today', value: stats?.history?.filter(h => { const today = new Date(); today.setHours(0,0,0,0); const d = h.date?.split('-'); if(!d || d.length !== 3) return false; const itemDate = new Date(parseInt(d[2]), parseInt(d[1])-1, parseInt(d[0])); return itemDate >= today; }).length || 0, iconType: 'calendar', accent: '#10b981' },
-      { id: 'users', label: 'Active Users', value: stats?.users.count || 0, iconType: 'users', accent: '#3b82f6' },
-      { id: 'success', label: 'Success Rate', value: stats?.history ? Math.round((stats.history.filter(h => h.status !== 'failed').length / Math.max(stats.history.length, 1)) * 100) : 100, suffix: '%', iconType: 'check', accent: '#22c55e' },
+      { id: 'total', label: 'Total Reports', value: (stats?.closing.count || 0) + (stats?.po.count || 0) + (stats?.accessories.count || 0) + (stats?.challan?.count || 0) + (stats?.hourly?.count || 0) + (stats?.sewingClosing?.count || 0), iconType: 'chart', accent: '#64748b', iconBg: 'from-slate-700 to-slate-900', shadowHex: '#47556940', sub: 'All time total' },
+      { id: 'today', label: "Today's Reports", value: stats?.history?.filter(h => { const today = new Date(); today.setHours(0,0,0,0); const d = h.date?.split('-'); if(!d || d.length !== 3) return false; const itemDate = new Date(parseInt(d[2]), parseInt(d[1])-1, parseInt(d[0])); return itemDate >= today; }).length || 0, iconType: 'calendar', accent: '#10b981', iconBg: 'from-emerald-400 to-teal-500', shadowHex: '#10b98140', sub: 'Since midnight' },
+      { id: 'users', label: 'Active Users', value: stats?.users.count || 0, iconType: 'users', accent: '#3b82f6', iconBg: 'from-blue-400 to-indigo-600', shadowHex: '#3b82f640', sub: 'Registered accounts' },
+      { id: 'success', label: 'Success Rate', value: stats?.history ? Math.round((stats.history.filter(h => h.status !== 'failed').length / Math.max(stats.history.length, 1)) * 100) : 100, suffix: '%', iconType: 'check', accent: '#22c55e', iconBg: 'from-green-400 to-emerald-600', shadowHex: '#22c55e40', sub: 'Reports succeeded' },
     ];
 
-    // Service breakdown for horizontal scroll section
+    // Service breakdown
     const serviceBreakdown = [
-      { id: 'closing', label: 'Closing', value: stats?.closing.count || 0, color: '#10b981' },
-      { id: 'po', label: 'PO Sheet', value: stats?.po.count || 0, color: '#3b82f6' },
-      { id: 'accessories', label: 'Accessories', value: stats?.accessories.count || 0, color: '#f59e0b' },
-      { id: 'challan', label: 'Challan', value: stats?.challan?.count || 0, color: '#8b5cf6' },
-      { id: 'hourly', label: 'Hourly', value: stats?.hourly?.count || 0, color: '#0ea5e9' },
-      { id: 'sewing', label: 'Sewing', value: stats?.sewingClosing?.count || 0, color: '#f43f5e' },
+      { id: 'closing', label: 'Closing', value: stats?.closing.count || 0, color: '#10b981', iconPath: 'M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z' },
+      { id: 'po', label: 'PO Sheet', value: stats?.po.count || 0, color: '#3b82f6', iconPath: 'M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75' },
+      { id: 'accessories', label: 'Accessories', value: stats?.accessories.count || 0, color: '#f59e0b', iconPath: 'M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9' },
+      { id: 'challan', label: 'Challan', value: stats?.challan?.count || 0, color: '#8b5cf6', iconPath: 'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-6 9 2 2 4-4' },
+      { id: 'hourly', label: 'Hourly', value: stats?.hourly?.count || 0, color: '#0ea5e9', iconPath: 'M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0z' },
+      { id: 'sewing', label: 'Sewing', value: stats?.sewingClosing?.count || 0, color: '#f43f5e', iconPath: 'M6 6.878V6a2.25 2.25 0 0 1 2.25-2.25h7.5A2.25 2.25 0 0 1 18 6v.878m-12 0c.235-.083.487-.128.75-.128h10.5c.263 0 .515.045.75.128m-12 0A2.25 2.25 0 0 0 4.5 9v.878m13.5-3A2.25 2.25 0 0 1 19.5 9v.878m0 0a2.246 2.246 0 0 0-.75-.128H5.25c-.263 0-.515.045-.75.128m15 0A2.25 2.25 0 0 1 21 12v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6c0-.98.626-1.813 1.5-2.122' },
     ];
 
     return (
@@ -632,7 +754,7 @@ export default function DashboardPage() {
                 </div>
                 <p className="text-[11px] text-slate-500 font-medium">{metric.label}</p>
               </div>
-              <motion.p 
+              <motion.p
                 key={metric.value}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -664,7 +786,7 @@ export default function DashboardPage() {
                   <div className="w-2 h-2 rounded-full" style={{ backgroundColor: service.color }} />
                   <p className="text-[10px] text-slate-500 font-medium truncate">{service.label}</p>
                 </div>
-                <motion.p 
+                <motion.p
                   key={service.value}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -685,15 +807,15 @@ export default function DashboardPage() {
               const service = serviceConfig[key];
               if (!service) return null;
               return (
-                <motion.div 
-                  key={key} 
+                <motion.div
+                  key={key}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.03 }}
                   whileHover={{ x: 2 }}
                 >
-                  <Link 
-                    href={service.href} 
+                  <Link
+                    href={service.href}
                     className="flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-100 hover:border-slate-200 hover:shadow-sm transition-all group"
                   >
                     <div className="w-9 h-9 rounded-lg bg-slate-100 group-hover:bg-slate-200 flex items-center justify-center transition-colors flex-shrink-0">
@@ -724,70 +846,61 @@ export default function DashboardPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
               <div>
                 <h3 className="text-sm font-semibold text-slate-700">Activity Trend</h3>
-                <p className="text-[10px] text-slate-400">Last 7 days by service</p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500" /><span className="text-[9px] text-slate-500">Closing</span></div>
-                <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" /><span className="text-[9px] text-slate-500">PO</span></div>
-                <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" /><span className="text-[9px] text-slate-500">Accessories</span></div>
-                <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-violet-500" /><span className="text-[9px] text-slate-500">Challan</span></div>
-                <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-sky-500" /><span className="text-[9px] text-slate-500">Hourly</span></div>
-                <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-rose-500" /><span className="text-[9px] text-slate-500">Sewing</span></div>
+                <p className="text-[10px] text-slate-400">Last 7 days — daily report count by service</p>
               </div>
             </div>
-            <div className="h-56">
+            <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={serviceChartData}>
-                  <defs>
-                    <linearGradient id="closingGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/><stop offset="95%" stopColor="#10b981" stopOpacity={0}/></linearGradient>
-                    <linearGradient id="poGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient>
-                    <linearGradient id="accGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2}/><stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/></linearGradient>
-                    <linearGradient id="challanGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.2}/><stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/></linearGradient>
-                    <linearGradient id="hourlyGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.2}/><stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/></linearGradient>
-                    <linearGradient id="sewingGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#f43f5e" stopOpacity={0.2}/><stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/></linearGradient>
-                  </defs>
+                <BarChart data={serviceChartData} barSize={8} barGap={2}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
                   <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={30} />
-                  <Tooltip 
+                  <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={28} allowDecimals={false} />
+                  <Tooltip
+                    cursor={{ fill: '#f8fafc' }}
                     contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '10px', fontSize: '11px', color: 'white', padding: '10px 14px' }}
                     labelStyle={{ color: '#94a3b8', marginBottom: '6px', fontWeight: 500 }}
+                    itemStyle={{ color: '#f1f5f9' }}
                   />
-                  <Area type="monotone" dataKey="Closing" stroke="#10b981" strokeWidth={2} fill="url(#closingGrad)" />
-                  <Area type="monotone" dataKey="PO" stroke="#3b82f6" strokeWidth={2} fill="url(#poGrad)" />
-                  <Area type="monotone" dataKey="Accessories" stroke="#f59e0b" strokeWidth={2} fill="url(#accGrad)" />
-                  <Area type="monotone" dataKey="Challan" stroke="#8b5cf6" strokeWidth={2} fill="url(#challanGrad)" />
-                  <Area type="monotone" dataKey="Hourly" stroke="#0ea5e9" strokeWidth={2} fill="url(#hourlyGrad)" />
-                  <Area type="monotone" dataKey="SewingClosing" stroke="#f43f5e" strokeWidth={2} fill="url(#sewingGrad)" />
-                </AreaChart>
+                  <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: '10px', paddingTop: '8px' }} />
+                  <Bar dataKey="Closing" fill="#10b981" radius={[3,3,0,0]} />
+                  <Bar dataKey="PO" fill="#3b82f6" radius={[3,3,0,0]} />
+                  <Bar dataKey="Accessories" fill="#f59e0b" radius={[3,3,0,0]} />
+                  <Bar dataKey="Challan" fill="#8b5cf6" radius={[3,3,0,0]} />
+                  <Bar dataKey="Hourly" fill="#0ea5e9" radius={[3,3,0,0]} />
+                  <Bar dataKey="SewingClosing" name="Sewing" fill="#f43f5e" radius={[3,3,0,0]} />
+                </BarChart>
               </ResponsiveContainer>
             </div>
           </motion.div>
 
           <motion.div variants={scaleIn} className="lg:col-span-2 bg-white rounded-xl p-4 border border-slate-100">
-            <h3 className="text-sm font-semibold text-slate-700 mb-3">Top Contributors</h3>
-            <div className="h-40">
+            <h3 className="text-sm font-semibold text-slate-700 mb-1">Top Contributors</h3>
+            <p className="text-[10px] text-slate-400 mb-3">All time report counts</p>
+            <div className="h-48">
               {userPieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={userPieData} cx="50%" cy="50%" innerRadius={35} outerRadius={55} paddingAngle={4} dataKey="value" strokeWidth={0}>
+                    <Pie data={userPieData} cx="50%" cy="45%" innerRadius={38} outerRadius={62} paddingAngle={3} dataKey="value" strokeWidth={0} label={({ name, percent }) => `${((percent ?? 0) * 100).toFixed(0)}%`} labelLine={false}>
                       {userPieData.map((_, index) => (<Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />))}
                     </Pie>
-                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '10px', fontSize: '11px', color: 'white' }} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '10px', fontSize: '11px', color: 'white', padding: '8px 12px' }}
+                      labelStyle={{ color: '#94a3b8', marginBottom: '4px', fontWeight: 500 }}
+                      itemStyle={{ color: '#f1f5f9' }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (<div className="h-full flex items-center justify-center text-slate-400 text-xs">No data available</div>)}
             </div>
-            <div className="flex flex-wrap justify-center gap-3 mt-3">
-              {userPieData.slice(0, 4).map((user, i) => (
-                <motion.div 
-                  key={user.name} 
-                  className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 rounded-full"
-                  whileHover={{ scale: 1.05 }}
-                >
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: CHART_COLORS[i] }} />
-                  <span className="text-[10px] text-slate-600 font-medium truncate max-w-[60px]">{user.name}</span>
-                </motion.div>
+            <div className="space-y-1.5 mt-2">
+              {userPieData.slice(0, 5).map((user, i) => (
+                <div key={user.name} className="flex items-center justify-between px-1">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: CHART_COLORS[i] }} />
+                    <span className="text-[11px] text-slate-600 font-medium truncate max-w-[90px]">{user.name}</span>
+                  </div>
+                  <span className="text-[11px] font-semibold text-slate-700">{user.value}</span>
+                </div>
               ))}
             </div>
           </motion.div>
@@ -797,7 +910,14 @@ export default function DashboardPage() {
         <motion.section variants={fadeInUp}>
           <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
             <div className="p-3 border-b border-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-slate-700">Recent Activity</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-slate-700">Recent Activity</h3>
+                {allTodayCount > 0 && (
+                  <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-semibold rounded-full ring-1 ring-emerald-200">
+                    {allTodayCount} today
+                  </span>
+                )}
+              </div>
               <div className="flex gap-2">
                 <div className="relative">
                   <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
@@ -809,37 +929,42 @@ export default function DashboardPage() {
                     className="w-36 pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 transition-all" 
                   />
                 </div>
-                <select 
-                  value={typeFilter} 
-                  onChange={(e) => setTypeFilter(e.target.value)} 
-                  className="px-3 py-2 text-xs bg-slate-50 border border-slate-100 rounded-lg focus:outline-none cursor-pointer"
-                >
-                  <option value="all">All</option>
-                  <option value="Closing Report">Closing</option>
-                  <option value="PO Sheet">PO</option>
-                  <option value="Accessories">Accessories</option>
-                </select>
-                <select 
-                  value={dateFilter} 
-                  onChange={(e) => setDateFilter(e.target.value)} 
-                  className="px-3 py-2 text-xs bg-slate-50 border border-slate-100 rounded-lg focus:outline-none cursor-pointer"
-                >
-                  <option value="all">All Time</option>
-                  <option value="today">Today</option>
-                  <option value="week">Week</option>
-                </select>
+                <DropdownSelect
+                  value={typeFilter}
+                  onChange={setTypeFilter}
+                  options={[
+                    { value: 'all', label: 'All Types' },
+                    { value: 'Closing Report', label: 'Closing' },
+                    { value: 'PO Sheet', label: 'PO Sheet' },
+                    { value: 'Accessories', label: 'Accessories' },
+                    { value: 'Challan Report', label: 'Challan' },
+                    { value: 'Hourly Report', label: 'Hourly' },
+                    { value: 'Sewing Closing Report', label: 'Sewing' },
+                  ]}
+                />
+                <DropdownSelect
+                  value={dateFilter}
+                  onChange={setDateFilter}
+                  options={[
+                    { value: 'all', label: 'All Time' },
+                    { value: 'today', label: 'Today' },
+                    { value: 'week', label: 'This Week' },
+                    { value: 'month', label: 'This Month' },
+                  ]}
+                />
               </div>
             </div>
             
             {/* Mobile Card View */}
-            <div className="sm:hidden divide-y divide-slate-50">
+            <div className="sm:hidden">
+              <div className="divide-y divide-slate-50">
               <AnimatePresence>
                 {filteredHistory.length === 0 ? (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-10 text-center">
                     <p className="text-xs text-slate-400">No records found</p>
                   </motion.div>
                 ) : (
-                  filteredHistory.slice(0, 8).map((item, index) => (
+                  paginatedHistory.map((item, index) => (
                     <motion.div 
                       key={`mobile-${item.date}-${item.time}-${index}`} 
                       initial={{ opacity: 0, x: -10 }} 
@@ -867,6 +992,14 @@ export default function DashboardPage() {
                   ))
                 )}
               </AnimatePresence>
+              </div>
+              {totalPages > 1 && (
+                <div className="py-3 px-3 border-t border-slate-50 flex items-center justify-between">
+                  <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-3 py-1.5 text-xs font-medium bg-slate-100 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed">Prev</button>
+                  <span className="text-[10px] text-slate-500">Page {currentPage} / {totalPages} · {filteredHistory.length} total</span>
+                  <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-3 py-1.5 text-xs font-medium bg-slate-100 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed">Next</button>
+                </div>
+              )}
             </div>
             
             {/* Desktop Table */}
@@ -886,7 +1019,7 @@ export default function DashboardPage() {
                     {filteredHistory.length === 0 ? (
                       <tr><td colSpan={5} className="py-10 text-center text-xs text-slate-400">No records found</td></tr>
                     ) : (
-                      filteredHistory.slice(0, 12).map((item, index) => (
+                      paginatedHistory.map((item, index) => (
                         <motion.tr 
                           key={`${item.date}-${item.time}-${index}`} 
                           initial={{ opacity: 0 }} 
@@ -923,11 +1056,35 @@ export default function DashboardPage() {
                   </AnimatePresence>
                 </tbody>
               </table>
-              {filteredHistory.length > 12 && (
-                <div className="py-2 text-center border-t border-slate-50">
-                  <p className="text-[10px] text-slate-400">Showing 12 of {filteredHistory.length}</p>
-                </div>
-              )}
+              <div className="py-3 px-4 border-t border-slate-50 flex items-center justify-between">
+                <p className="text-[10px] text-slate-400">
+                  {filteredHistory.length === 0 ? 'No records' : `${Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, filteredHistory.length)}–${Math.min(currentPage * ITEMS_PER_PAGE, filteredHistory.length)} / ${filteredHistory.length}`}
+                </p>
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                    </button>
+                    {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                      let page = i + 1;
+                      if (totalPages > 5) {
+                        if (currentPage <= 3) page = i + 1;
+                        else if (currentPage >= totalPages - 2) page = totalPages - 4 + i;
+                        else page = currentPage - 2 + i;
+                      }
+                      return (
+                        <button key={page} onClick={() => setCurrentPage(page)}
+                          className={`w-7 h-7 flex items-center justify-center rounded-md text-[11px] font-medium transition-colors ${
+                            currentPage === page ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-100'
+                          }`}>{page}</button>
+                      );
+                    })}
+                    <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </motion.section>
@@ -951,50 +1108,29 @@ export default function DashboardPage() {
 
       {/* User Stats Row */}
       <motion.div variants={fadeInUp} className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <motion.div variants={scaleIn} whileHover={{ y: -2 }} className="bg-white rounded-xl p-4 border border-slate-100 hover:border-slate-200 hover:shadow-md transition-all">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
-              <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-              </svg>
+        {[
+          { label: 'Today', sub: 'Reports today', value: myTodayCount, iconPath: 'M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5' },
+          { label: 'Total', sub: 'All time', value: myTotalReports, iconPath: 'M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z' },
+          { label: 'Services', sub: 'Assigned', value: allowedServices.length, iconPath: 'M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z' },
+          { label: 'Activity', sub: 'This period', value: myActivityData.reduce((s, it) => s + it.value, 0), iconPath: 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+        ].map((card) => (
+          <motion.div
+            key={card.label}
+            variants={scaleIn}
+            whileHover={{ y: -2, transition: springTransition }}
+            className="bg-white rounded-xl p-4 border border-slate-100 hover:border-slate-200 hover:shadow-md transition-all"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
+                <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d={card.iconPath} />
+                </svg>
+              </div>
+              <p className="text-[11px] text-slate-500 font-medium">{card.label}</p>
             </div>
-            <p className="text-[11px] text-slate-500 font-medium">Today</p>
-          </div>
-          <p className="text-xl font-semibold text-slate-800 tabular-nums">{myTodayCount}</p>
-        </motion.div>
-        <motion.div variants={scaleIn} whileHover={{ y: -2 }} className="bg-white rounded-xl p-4 border border-slate-100 hover:border-slate-200 hover:shadow-md transition-all">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
-              <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-              </svg>
-            </div>
-            <p className="text-[11px] text-slate-500 font-medium">Total</p>
-          </div>
-          <p className="text-xl font-semibold text-slate-800 tabular-nums">{myTotalReports}</p>
-        </motion.div>
-        <motion.div variants={scaleIn} whileHover={{ y: -2 }} className="bg-white rounded-xl p-4 border border-slate-100 hover:border-slate-200 hover:shadow-md transition-all">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
-              <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-              </svg>
-            </div>
-            <p className="text-[11px] text-slate-500 font-medium">Services</p>
-          </div>
-          <p className="text-xl font-semibold text-slate-800 tabular-nums">{allowedServices.length}</p>
-        </motion.div>
-        <motion.div variants={scaleIn} whileHover={{ y: -2 }} className="bg-white rounded-xl p-4 border border-slate-100 hover:border-slate-200 hover:shadow-md transition-all">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
-              <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <p className="text-[11px] text-slate-500 font-medium">Weekly</p>
-          </div>
-          <p className="text-xl font-semibold text-slate-800 tabular-nums">{myActivityData.reduce((sum, item) => sum + item.value, 0)}</p>
-        </motion.div>
+            <p className="text-xl font-semibold text-slate-800 tabular-nums">{card.value}</p>
+          </motion.div>
+        ))}
       </motion.div>
 
       {/* Your Services - Clean Cards */}
@@ -1027,7 +1163,7 @@ export default function DashboardPage() {
                       <h3 className="text-[13px] font-medium text-slate-700 truncate">{service.title}</h3>
                       <p className="text-[10px] text-slate-400 truncate">{service.subtitle}</p>
                     </div>
-                    <ChevronRightIcon className="w-4 h-4 text-slate-300 group-hover:text-slate-500" />
+                    <svg className="w-4 h-4 text-slate-300 group-hover:text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
                   </Link>
                 </motion.div>
               );
@@ -1039,55 +1175,64 @@ export default function DashboardPage() {
       {/* Charts - Minimal Design */}
       <motion.div variants={fadeInUp} className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <motion.div variants={scaleIn} className="lg:col-span-3 bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
+          <div className="mb-4">
             <h3 className="text-sm font-semibold text-slate-700">Activity Overview</h3>
-            <div className="flex gap-3">
-              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500" /><span className="text-[10px] text-slate-400">Closing</span></div>
-              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-500" /><span className="text-[10px] text-slate-400">PO</span></div>
-              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-500" /><span className="text-[10px] text-slate-400">Others</span></div>
-            </div>
+            <p className="text-[10px] text-slate-400 mt-0.5">Last 7 days — daily report count</p>
           </div>
-          <div className="h-56">
+          <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={serviceChartData}>
-                <defs>
-                  <linearGradient id="userClosingG" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.15}/><stop offset="95%" stopColor="#10b981" stopOpacity={0}/></linearGradient>
-                  <linearGradient id="userPoG" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.15}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient>
-                  <linearGradient id="userAccG" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#f59e0b" stopOpacity={0.15}/><stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/></linearGradient>
-                </defs>
+              <BarChart data={serviceChartData} barSize={7} barGap={2}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '8px', fontSize: '11px', color: 'white' }} />
-                <Area type="monotone" dataKey="Closing" stroke="#10b981" strokeWidth={2} fill="url(#userClosingG)" />
-                <Area type="monotone" dataKey="PO" stroke="#3b82f6" strokeWidth={2} fill="url(#userPoG)" />
-                <Area type="monotone" dataKey="Accessories" stroke="#f59e0b" strokeWidth={2} fill="url(#userAccG)" />
-              </AreaChart>
+                <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={24} allowDecimals={false} />
+                <Tooltip
+                  cursor={{ fill: '#f8fafc' }}
+                  contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '8px', fontSize: '11px', color: 'white', padding: '8px 12px' }}
+                  labelStyle={{ color: '#94a3b8', marginBottom: '4px', fontWeight: 500 }}
+                  itemStyle={{ color: '#f1f5f9' }}
+                />
+                <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: '10px', paddingTop: '6px' }} />
+                <Bar dataKey="Closing" fill="#10b981" radius={[3,3,0,0]} />
+                <Bar dataKey="PO" fill="#3b82f6" radius={[3,3,0,0]} />
+                <Bar dataKey="Accessories" fill="#f59e0b" radius={[3,3,0,0]} />
+                <Bar dataKey="Challan" fill="#8b5cf6" radius={[3,3,0,0]} />
+                <Bar dataKey="Hourly" fill="#0ea5e9" radius={[3,3,0,0]} />
+                <Bar dataKey="SewingClosing" name="Sewing" fill="#f43f5e" radius={[3,3,0,0]} />
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </motion.div>
 
         <motion.div variants={scaleIn} className="lg:col-span-2 bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
-          <h3 className="text-sm font-semibold text-slate-700 mb-4">Your Activity</h3>
+          <h3 className="text-sm font-semibold text-slate-700 mb-1">Your Activity</h3>
+          <p className="text-[10px] text-slate-400 mb-3">All-time breakdown by type</p>
           <div className="h-44">
             {myActivityData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={myActivityData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={3} dataKey="value" strokeWidth={0}>
+                  <Pie data={myActivityData} cx="50%" cy="45%" innerRadius={38} outerRadius={58} paddingAngle={3} dataKey="value" strokeWidth={0} label={({ percent }) => `${((percent ?? 0) * 100).toFixed(0)}%`} labelLine={false}>
                     {myActivityData.map((_, index) => (<Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />))}
                   </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '8px', fontSize: '11px', color: 'white' }} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '8px', fontSize: '11px', color: 'white', padding: '8px 12px' }}
+                    labelStyle={{ color: '#94a3b8', marginBottom: '4px', fontWeight: 500 }}
+                    itemStyle={{ color: '#f1f5f9' }}
+                    formatter={(value, name) => [`${value} reports`, name]}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
               <div className="h-full flex items-center justify-center text-slate-400 text-xs">No activity yet</div>
             )}
           </div>
-          <div className="flex flex-wrap justify-center gap-3 mt-2">
-            {myActivityData.slice(0, 4).map((item, i) => (
-              <div key={item.name} className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: CHART_COLORS[i] }} />
-                <span className="text-[10px] text-slate-500 truncate max-w-[60px]">{item.name}</span>
+          <div className="space-y-1.5 mt-2">
+            {myActivityData.map((item, i) => (
+              <div key={item.name} className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: CHART_COLORS[i] }} />
+                  <span className="text-[10px] text-slate-500 truncate max-w-[90px]">{item.name}</span>
+                </div>
+                <span className="text-[11px] font-semibold text-slate-700">{item.value}</span>
               </div>
             ))}
           </div>
@@ -1098,37 +1243,45 @@ export default function DashboardPage() {
       <motion.section variants={fadeInUp}>
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="p-4 border-b border-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <h3 className="text-sm font-semibold text-slate-700">Your Recent Activity</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-slate-700">Your Recent Activity</h3>
+              {allTodayCount > 0 && (
+                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-semibold rounded-full ring-1 ring-emerald-200">
+                  {allTodayCount} today
+                </span>
+              )}
+            </div>
             <div className="flex gap-2">
-              <select 
-                value={typeFilter} 
-                onChange={(e) => setTypeFilter(e.target.value)} 
-                className="px-3 py-2 text-xs bg-slate-50 border border-slate-100 rounded-lg focus:outline-none cursor-pointer"
-              >
-                <option value="all">All Types</option>
-                {allowedServices.map(p => (<option key={p} value={permissionLabels[p] || p}>{permissionLabels[p] || p}</option>))}
-              </select>
-              <select 
-                value={dateFilter} 
-                onChange={(e) => setDateFilter(e.target.value)} 
-                className="px-3 py-2 text-xs bg-slate-50 border border-slate-100 rounded-lg focus:outline-none cursor-pointer"
-              >
-                <option value="all">All Time</option>
-                <option value="today">Today</option>
-                <option value="week">Week</option>
-              </select>
+              <DropdownSelect
+                value={typeFilter}
+                onChange={setTypeFilter}
+                options={[
+                  { value: 'all', label: 'All Types' },
+                  ...allowedServices.map(p => ({ value: permissionLabels[p] || p, label: permissionLabels[p] || p })),
+                ]}
+              />
+              <DropdownSelect
+                value={dateFilter}
+                onChange={setDateFilter}
+                options={[
+                  { value: 'all', label: 'All Time' },
+                  { value: 'today', label: 'Today' },
+                  { value: 'week', label: 'This Week' },
+                ]}
+              />
             </div>
           </div>
           
           {/* Mobile View */}
-          <div className="sm:hidden divide-y divide-slate-50">
+          <div className="sm:hidden">
+            <div className="divide-y divide-slate-50">
             <AnimatePresence>
               {filteredHistory.length === 0 ? (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-10 text-center">
                   <p className="text-xs text-slate-400">No activity yet</p>
                 </motion.div>
               ) : (
-                filteredHistory.slice(0, 8).map((item, index) => (
+                paginatedHistory.map((item, index) => (
                   <motion.div 
                     key={`user-mobile-${item.date}-${item.time}-${index}`} 
                     initial={{ opacity: 0, x: -10 }} 
@@ -1154,6 +1307,14 @@ export default function DashboardPage() {
                 ))
               )}
             </AnimatePresence>
+            </div>
+            {totalPages > 1 && (
+              <div className="py-3 px-3 border-t border-slate-50 flex items-center justify-between">
+                <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-3 py-1.5 text-xs font-medium bg-slate-100 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed">Prev</button>
+                <span className="text-[10px] text-slate-500">Page {currentPage} / {totalPages} · {filteredHistory.length} total</span>
+                <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-3 py-1.5 text-xs font-medium bg-slate-100 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed">Next</button>
+              </div>
+            )}
           </div>
           
           {/* Desktop Table */}
@@ -1172,7 +1333,7 @@ export default function DashboardPage() {
                   {filteredHistory.length === 0 ? (
                     <tr><td colSpan={4} className="py-10 text-center text-xs text-slate-400">No activity yet. Start using services!</td></tr>
                   ) : (
-                    filteredHistory.slice(0, 10).map((item, index) => (
+                    paginatedHistory.map((item, index) => (
                       <motion.tr 
                         key={`${item.date}-${item.time}-${index}`} 
                         initial={{ opacity: 0 }} 
@@ -1201,11 +1362,35 @@ export default function DashboardPage() {
                 </AnimatePresence>
               </tbody>
             </table>
-            {filteredHistory.length > 10 && (
-              <div className="py-2 text-center border-t border-slate-50">
-                <p className="text-[10px] text-slate-400">Showing 10 of {filteredHistory.length}</p>
-              </div>
-            )}
+            <div className="py-3 px-4 border-t border-slate-50 flex items-center justify-between">
+              <p className="text-[10px] text-slate-400">
+                {filteredHistory.length === 0 ? 'No activity yet' : `${Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, filteredHistory.length)}–${Math.min(currentPage * ITEMS_PER_PAGE, filteredHistory.length)} / ${filteredHistory.length}`}
+              </p>
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1">
+                  <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                  </button>
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    let page = i + 1;
+                    if (totalPages > 5) {
+                      if (currentPage <= 3) page = i + 1;
+                      else if (currentPage >= totalPages - 2) page = totalPages - 4 + i;
+                      else page = currentPage - 2 + i;
+                    }
+                    return (
+                      <button key={page} onClick={() => setCurrentPage(page)}
+                        className={`w-7 h-7 flex items-center justify-center rounded-md text-[11px] font-medium transition-colors ${
+                          currentPage === page ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-100'
+                        }`}>{page}</button>
+                    );
+                  })}
+                  <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </motion.section>
