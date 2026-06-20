@@ -9,6 +9,7 @@ interface ReportBlock {
   gmts_qty: string[];
   plus_3_percent: string[];
   sewing_input: string[];
+  send_to_sewing: string[];
   cutting_qc: string[];
 }
 
@@ -122,6 +123,7 @@ function parseReportData(htmlContent: string): ReportBlock[] | null {
       let buyerName = 'N/A';
       let gmtsQtyData: string[] = [];
       let sewingInputData: string[] = [];
+      let sendToSewingData: string[] = [];
       let cuttingQcData: string[] = [];
 
       for (const row of block) {
@@ -159,6 +161,19 @@ function parseReportData(htmlContent: string): ReportBlock[] | null {
             }
           }
 
+          // "Send To Sewing" row -> used as the new "Input Qty" (basis for all calculations)
+          if (subLower === 'send to sewing') {
+            sendToSewingData = [];
+            for (let i = 3; i < Math.min(cells.length, headers.length + 3); i++) {
+              sendToSewingData.push($(cells[i]).text().trim());
+            }
+          } else if (mainLower === 'send to sewing') {
+            sendToSewingData = [];
+            for (let i = 1; i < Math.min(cells.length, headers.length + 1); i++) {
+              sendToSewingData.push($(cells[i]).text().trim());
+            }
+          }
+
           if (mainLower.includes('cutting qc') && !mainLower.includes('balance')) {
             cuttingQcData = [];
             for (let i = 1; i < Math.min(cells.length, headers.length + 1); i++) {
@@ -193,6 +208,7 @@ function parseReportData(htmlContent: string): ReportBlock[] | null {
           gmts_qty: gmtsQtyData,
           plus_3_percent: plus3PercentData,
           sewing_input: sewingInputData,
+          send_to_sewing: sendToSewingData,
           cutting_qc: cuttingQcData,
         });
       }
@@ -209,16 +225,19 @@ export function calculateMetrics(block: ReportBlock, index: number) {
   const actual = parseInt((block.gmts_qty[index] || '0').replace(/,/g, '')) || 0;
   const qty3 = Math.round(actual * 1.03);
   const cuttingQc = parseInt((block.cutting_qc[index] || '0').replace(/,/g, '')) || 0;
-  const inputQty = parseInt((block.sewing_input[index] || '0').replace(/,/g, '')) || 0;
+  // "Input Qty" now takes the raw "Send To Sewing" values and drives all calculations
+  const inputQty = parseInt((block.send_to_sewing[index] || '0').replace(/,/g, '')) || 0;
+  // "Sewing Punch" keeps the old "Sewing Input" values (display only)
+  const sewingPunch = parseInt((block.sewing_input[index] || '0').replace(/,/g, '')) || 0;
   const balance = cuttingQc - inputQty;
   const shortPlus = inputQty - qty3;
   const percentage = qty3 > 0 ? ((shortPlus / qty3) * 100) : 0;
 
-  return { actual, qty3, cuttingQc, inputQty, balance, shortPlus, percentage };
+  return { actual, qty3, cuttingQc, inputQty, sewingPunch, balance, shortPlus, percentage };
 }
 
 export function calculateTotals(block: ReportBlock) {
-  let tot3 = 0, totAct = 0, totCut = 0, totInp = 0;
+  let tot3 = 0, totAct = 0, totCut = 0, totInp = 0, totPunch = 0;
 
   for (let i = 0; i < block.headers.length; i++) {
     const metrics = calculateMetrics(block, i);
@@ -226,11 +245,12 @@ export function calculateTotals(block: ReportBlock) {
     totAct += metrics.actual;
     totCut += metrics.cuttingQc;
     totInp += metrics.inputQty;
+    totPunch += metrics.sewingPunch;
   }
 
   const totBal = totCut - totInp;
   const totSp = totInp - tot3;
   const totPct = tot3 > 0 ? ((totSp / tot3) * 100) : 0;
 
-  return { tot3, totAct, totCut, totInp, totBal, totSp, totPct };
+  return { tot3, totAct, totCut, totInp, totPunch, totBal, totSp, totPct };
 }

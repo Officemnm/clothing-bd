@@ -41,14 +41,14 @@ export async function GET(request: NextRequest) {
     const irFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '7B261A' } };
 
     // Title Row
-    worksheet.mergeCells('A1:I1');
+    worksheet.mergeCells('A1:J1');
     const titleCell = worksheet.getCell('A1');
     titleCell.value = 'COTTON CLOTHING BD LTD';
     titleCell.font = titleFont;
     titleCell.alignment = centerAlign;
 
     // Subtitle
-    worksheet.mergeCells('A2:I2');
+    worksheet.mergeCells('A2:J2');
     const subtitleCell = worksheet.getCell('A2');
     subtitleCell.value = 'CLOSING REPORT [ INPUT SECTION ]';
     subtitleCell.font = { name: 'Arial', size: 14, bold: true };
@@ -60,9 +60,9 @@ export async function GET(request: NextRequest) {
     // Info section
     const currentDate = new Date().toLocaleDateString('en-GB');
     const infoData = [
-      ['BUYER', data[0]?.buyer || 'N/A', '', '', '', '', '', 'CLOSING DATE', currentDate],
-      ['IR/IB NO', refNo.toUpperCase(), '', '', '', '', '', 'SHIPMENT', 'ALL'],
-      ['STYLE NO', data[0]?.style || 'N/A', '', '', '', '', '', 'PO NO', 'ALL'],
+      ['BUYER', data[0]?.buyer || 'N/A', '', '', '', '', '', 'CLOSING DATE', currentDate, ''],
+      ['IR/IB NO', refNo.toUpperCase(), '', '', '', '', '', 'SHIPMENT', 'ALL', ''],
+      ['STYLE NO', data[0]?.style || 'N/A', '', '', '', '', '', 'PO NO', 'ALL', ''],
     ];
 
     for (let i = 0; i < infoData.length; i++) {
@@ -71,8 +71,10 @@ export async function GET(request: NextRequest) {
       
       // Merge cells B to G
       worksheet.mergeCells(4 + i, 2, 4 + i, 7);
+      // Merge the right-hand value across I to J
+      worksheet.mergeCells(4 + i, 9, 4 + i, 10);
       
-      for (let j = 1; j <= 9; j++) {
+      for (let j = 1; j <= 10; j++) {
         const cell = row.getCell(j);
         cell.font = boldFont;
         cell.border = thinBorder;
@@ -91,11 +93,11 @@ export async function GET(request: NextRequest) {
     // Data blocks
     for (const block of data) {
       // Header row
-      const headers = ['COLOUR NAME', 'SIZE', 'ORDER QTY 3%', 'ACTUAL QTY', 'CUTTING QC', 'INPUT QTY', 'BALANCE', 'SHORT/PLUS QTY', 'Percentage %'];
+      const headers = ['COLOUR NAME', 'SIZE', 'ORDER QTY 3%', 'ACTUAL QTY', 'CUTTING QC', 'INPUT QTY', 'SEWING PUNCH', 'BALANCE', 'SHORT/PLUS QTY', 'Percentage %'];
       const headerRow = worksheet.getRow(currentRow);
       headerRow.values = headers;
       
-      for (let j = 1; j <= 9; j++) {
+      for (let j = 1; j <= 10; j++) {
         const cell = headerRow.getCell(j);
         cell.font = headerFont;
         cell.alignment = centerAlign;
@@ -112,7 +114,10 @@ export async function GET(request: NextRequest) {
         const size = block.headers[i];
         const actualQty = parseInt((block.gmts_qty[i] || '0').replace(/,/g, '')) || 0;
         const cuttingQc = parseInt((block.cutting_qc[i] || '0').replace(/,/g, '')) || 0;
-        const inputQty = parseInt((block.sewing_input[i] || '0').replace(/,/g, '')) || 0;
+        // Input Qty now comes from "Send To Sewing" and drives the calculations
+        const inputQty = parseInt((block.send_to_sewing[i] || '0').replace(/,/g, '')) || 0;
+        // Sewing Punch keeps the old "Sewing Input" values (display only)
+        const sewingPunch = parseInt((block.sewing_input[i] || '0').replace(/,/g, '')) || 0;
         const qty3 = Math.round(actualQty * 1.03);
         const balance = cuttingQc - inputQty;
         const shortPlus = inputQty - qty3;
@@ -126,12 +131,13 @@ export async function GET(request: NextRequest) {
           actualQty,
           cuttingQc,
           inputQty,
+          sewingPunch,
           balance,
           shortPlus,
           pct,
         ];
 
-        for (let j = 1; j <= 9; j++) {
+        for (let j = 1; j <= 10; j++) {
           const cell = row.getCell(j);
           cell.border = thinBorder;
           cell.alignment = centerAlign;
@@ -140,7 +146,7 @@ export async function GET(request: NextRequest) {
           if (j === 3) cell.fill = lightBlueFill;
           if (j === 6) cell.fill = lightGreenFill;
           if ([1, 2, 3, 6].includes(j)) cell.font = boldFont;
-          if (j === 9) cell.numFmt = '0.00%';
+          if (j === 10) cell.numFmt = '0.00%';
         }
         currentRow++;
       }
@@ -160,27 +166,28 @@ export async function GET(request: NextRequest) {
       worksheet.mergeCells(currentRow, 1, currentRow, 2);
       
       // Calculate totals
-      let tot3 = 0, totAct = 0, totCut = 0, totInp = 0;
+      let tot3 = 0, totAct = 0, totCut = 0, totInp = 0, totPunch = 0;
       for (let i = 0; i < block.headers.length; i++) {
         const actual = parseInt((block.gmts_qty[i] || '0').replace(/,/g, '')) || 0;
         tot3 += Math.round(actual * 1.03);
         totAct += actual;
         totCut += parseInt((block.cutting_qc[i] || '0').replace(/,/g, '')) || 0;
-        totInp += parseInt((block.sewing_input[i] || '0').replace(/,/g, '')) || 0;
+        totInp += parseInt((block.send_to_sewing[i] || '0').replace(/,/g, '')) || 0;
+        totPunch += parseInt((block.sewing_input[i] || '0').replace(/,/g, '')) || 0;
       }
       const totBal = totCut - totInp;
       const totSp = totInp - tot3;
       const totPct = tot3 > 0 ? totSp / tot3 : 0;
 
-      totalRow.values = ['TOTAL', '', tot3, totAct, totCut, totInp, totBal, totSp, totPct];
+      totalRow.values = ['TOTAL', '', tot3, totAct, totCut, totInp, totPunch, totBal, totSp, totPct];
 
-      for (let j = 1; j <= 9; j++) {
+      for (let j = 1; j <= 10; j++) {
         const cell = totalRow.getCell(j);
         cell.font = { name: 'Arial', size: 11, bold: true };
         cell.border = thinBorder;
         cell.alignment = centerAlign;
         cell.fill = headerFill;
-        if (j === 9) cell.numFmt = '0.00%';
+        if (j === 10) cell.numFmt = '0.00%';
       }
 
       currentRow += 2;
@@ -194,6 +201,7 @@ export async function GET(request: NextRequest) {
       { width: 15 },
       { width: 15 },
       { width: 14 },
+      { width: 15 },
       { width: 12 },
       { width: 18 },
       { width: 14 },

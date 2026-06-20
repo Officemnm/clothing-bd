@@ -12,6 +12,7 @@ interface SizeData {
   qty3: number;
   cuttingQc: number;
   inputQty: number;
+  sewingPunch: number;
   balance: number;
   shortPlus: number;
   percentage: number;
@@ -27,6 +28,7 @@ interface BlockData {
     totAct: number;
     totCut: number;
     totInp: number;
+    totPunch: number;
     totBal: number;
     totSp: number;
     totPct: number;
@@ -380,6 +382,14 @@ export default function ClosingPreviewPage() {
                         <td key={i} className="text-center font-bold text-black text-sm" style={{ border: '0.5px solid black', padding: '0px 2px' }}>{s.inputQty}</td>
                       ))}
                       <td className="text-center font-bold text-black bg-gray-100 text-sm" style={{ border: '0.5px solid black', padding: '0px 3px' }}>{block.totals.totInp}</td>
+                    </tr>
+                    {/* Sewing Punch */}
+                    <tr>
+                      <td className="font-semibold text-black text-sm whitespace-nowrap" style={{ border: '0.5px solid black', padding: '0px 3px' }}>Sewing Punch</td>
+                      {block.sizes.map((s, i) => (
+                        <td key={i} className="text-center font-semibold text-black text-sm" style={{ border: '0.5px solid black', padding: '0px 2px' }}>{s.sewingPunch}</td>
+                      ))}
+                      <td className="text-center font-bold text-black bg-gray-50 text-sm" style={{ border: '0.5px solid black', padding: '0px 3px' }}>{block.totals.totPunch}</td>
                     </tr>
                     {/* Balance */}
                     <tr>
