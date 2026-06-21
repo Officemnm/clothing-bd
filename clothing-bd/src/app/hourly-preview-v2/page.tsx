@@ -333,7 +333,7 @@ export default function HourlyPreviewV2Page() {
                     <span className="text-black font-bold">{grandTotal.slot2.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-xs">
-                    <span className="text-black">5PM - 9PM</span>
+                    <span className="text-black">5PM - 12AM</span>
                     <span className="text-black font-bold">{grandTotal.slot3.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-xs border-t border-black pt-0.5 mt-0.5">
