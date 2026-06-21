@@ -423,7 +423,7 @@ export default function HourlyPreviewPage() {
                       
                       {/* 5:00 PM - 9:00 PM */}
                       <tr className="bg-gray-50">
-                        <td className="font-semibold text-black text-base whitespace-nowrap" style={{ border: '1px solid black', padding: '4px 6px' }}>5PM - 9PM</td>
+                        <td className="font-semibold text-black text-base whitespace-nowrap" style={{ border: '1px solid black', padding: '4px 6px' }}>5PM - 12AM</td>
                         {floorLineNumbers.map((lineNo, i) => {
                           const data = getLineData(floor, lineNo);
                           const val = data ? data.slot3 : 0;
