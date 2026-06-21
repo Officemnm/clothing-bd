@@ -18,7 +18,7 @@ export type { HourlySnapshot, FloorSnapshot };
 const DEFAULT_CONFIG: SnapshotConfig = {
   slot1Time: '12:45',
   slot2Time: '17:00',
-  slot3Time: '21:00',
+  slot3Time: '23:59',
   timezone: 'Asia/Dhaka'
 };
 
